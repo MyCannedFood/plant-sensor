@@ -224,6 +224,10 @@ class DatabaseSeeder extends Seeder
             $reading = Reading::query()->create([
                 'device_id' => $device->id,
                 'measured_at' => $measuredAt,
+                // An incident was measured minutes ago and is being replayed
+                // now, so the two timestamps deliberately differ. That is the
+                // shape of a device uploading a backlog after losing WiFi.
+                'received_at' => now(),
                 'co2' => $parameter === ThresholdParameter::Co2 ? $incident['value'] : $conditions['co2'],
                 'temperature' => $parameter === ThresholdParameter::Temperature ? $incident['value'] : $conditions['temperature'],
                 'humidity' => $parameter === ThresholdParameter::Humidity ? $incident['value'] : $conditions['humidity'],

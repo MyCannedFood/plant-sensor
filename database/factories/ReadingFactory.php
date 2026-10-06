@@ -5,6 +5,7 @@ namespace Database\Factories;
 use App\Models\Device;
 use App\Models\Reading;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Carbon;
 
 /**
  * @extends Factory<Reading>
@@ -21,9 +22,16 @@ class ReadingFactory extends Factory
         return [
             'device_id' => Device::factory(),
             'measured_at' => now(),
+            // The device's own clock and the moment this server accepted the
+            // reading are separate questions, so the factory answers them
+            // separately. A small positive gap is what a real board produces
+            // between measuring and the request landing.
+            'received_at' => fn (array $attributes) => isset($attributes['measured_at'])
+                ? Carbon::parse($attributes['measured_at'])->addSeconds(fake()->numberBetween(1, 20))
+                : now(),
             'co2' => fake()->numberBetween(450, 1200),
             'temperature' => fake()->randomFloat(2, 18, 28),
-            'humidity' => fake()->numberBetween(40, 70),
+            'humidity' => fake()->randomFloat(1, 40, 70),
         ];
     }
 

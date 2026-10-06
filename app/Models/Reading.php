@@ -18,6 +18,25 @@ class Reading extends Model
     use HasFactory;
 
     /**
+     * Perform any actions required after the model is booted.
+     *
+     * received_at is deliberately absent from the fillable list: it records
+     * when this server accepted the reading, so it must never be settable from
+     * a submitted payload.
+     *
+     * This is a safety net for application code, not a guarantee. Anything
+     * running under WithoutModelEvents has the event dispatcher muted and
+     * will skip it, which is why the seeder sets received_at explicitly and
+     * the factory supplies its own default.
+     */
+    protected static function booted(): void
+    {
+        static::creating(function (self $reading): void {
+            $reading->received_at ??= now();
+        });
+    }
+
+    /**
      * Get the device that recorded the reading.
      */
     public function device(): BelongsTo
@@ -44,7 +63,9 @@ class Reading extends Model
     {
         return [
             'measured_at' => 'datetime',
+            'received_at' => 'datetime',
             'temperature' => 'decimal:2',
+            'humidity' => 'decimal:2',
         ];
     }
 }
