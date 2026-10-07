@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\DeviceStatus;
+use App\Enums\ThresholdParameter;
 use Database\Factories\DeviceFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -54,6 +55,32 @@ class Device extends Model
     public function alerts(): HasMany
     {
         return $this->hasMany(Alert::class);
+    }
+
+    /**
+     * Get the parameters this device is physically able to report.
+     *
+     * @return HasMany<DeviceSensor, $this>
+     */
+    public function sensors(): HasMany
+    {
+        return $this->hasMany(DeviceSensor::class);
+    }
+
+    /**
+     * Determine whether the device carries a sensor for the parameter.
+     *
+     * This is the check that decides whether a null measurement means "no
+     * sensor" or "sensor failed", and it is the reason readings can be
+     * stored with a subset of the parameters filled in.
+     */
+    public function declares(ThresholdParameter $parameter): bool
+    {
+        if ($this->relationLoaded('sensors')) {
+            return $this->sensors->contains('parameter', $parameter);
+        }
+
+        return $this->sensors()->where('parameter', $parameter)->exists();
     }
 
     /**
