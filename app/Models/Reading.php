@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['measured_at', 'co2', 'temperature', 'humidity'])]
+#[Fillable(['device_id', 'measured_at', 'co2', 'temperature', 'humidity'])]
 #[WithoutTimestamps]
 class Reading extends Model
 {
@@ -23,6 +23,11 @@ class Reading extends Model
      * received_at is deliberately absent from the fillable list: it records
      * when this server accepted the reading, so it must never be settable from
      * a submitted payload.
+     *
+     * device_id is fillable for application code (the controller flows the
+     * authenticated device into it), but never from a request: the validation
+     * rules in StoreReadingRequest do not name it, so no submitted payload can
+     * steer a reading onto another device.
      *
      * This is a safety net for application code, not a guarantee. Anything
      * running under WithoutModelEvents has the event dispatcher muted and

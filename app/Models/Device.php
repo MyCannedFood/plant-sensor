@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 #[Fillable(['name', 'serial_number', 'api_token', 'firmware_version', 'status', 'last_seen_at'])]
 #[Hidden(['api_token'])]
@@ -55,6 +56,24 @@ class Device extends Model
     public function alerts(): HasMany
     {
         return $this->hasMany(Alert::class);
+    }
+
+    /**
+     * Replace the device's API token and return the new plaintext.
+     *
+     * Only sha256(token) is stored, so this is the one moment the original
+     * exists: it must be handed to whoever provisions the device (or written
+     * to the local token file for the simulator) and cannot be recovered
+     * from the database afterwards.
+     */
+    public function generateToken(): string
+    {
+        $token = Str::random(40);
+
+        $this->api_token = hash('sha256', $token);
+        $this->save();
+
+        return $token;
     }
 
     /**
