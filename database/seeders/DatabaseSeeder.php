@@ -189,10 +189,11 @@ class DatabaseSeeder extends Seeder
     /**
      * Write the plaintext device tokens to a local file for the simulator.
      *
-     * storage/app/device-tokens.json is gitignored: it exists so the artisan
-     * simulator (and firmware during development) can authenticate without a
-     * token surviving in the database. The file is intentionally written
-     * last, after every seeding step has had a chance to fail.
+     * The local disk roots at storage/app/private, so the file lands at
+     * storage/app/private/device-tokens.json (gitignored). It exists so the
+     * artisan simulator (and firmware during development) can authenticate
+     * without a token surviving in the database. The file is intentionally
+     * written last, after every seeding step has had a chance to fail.
      *
      * @param  array<string, array{device_id: int, serial_number: string, token: string}>  $tokens
      */

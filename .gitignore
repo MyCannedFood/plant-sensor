@@ -20,7 +20,7 @@
 /public/storage
 /storage/*.key
 /storage/pail
-/storage/app/device-tokens.json
+/storage/app/private/device-tokens.json
 /vendor
 _ide_helper.php
 Homestead.json
