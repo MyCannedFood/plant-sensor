@@ -7,6 +7,7 @@ use App\Models\Alert;
 use App\Models\Device;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
@@ -119,5 +120,53 @@ class DatabaseSeederTest extends TestCase
         $this->assertEquals(1640, (float) $co2Incident->co2);
         $this->assertNotNull($co2Incident->temperature);
         $this->assertNotNull($co2Incident->humidity);
+    }
+
+    public function test_seeding_writes_a_token_file_for_every_device(): void
+    {
+        Storage::fake('local');
+
+        $this->seed();
+
+        $tokens = json_decode(Storage::disk('local')->get('device-tokens.json'), true, flags: JSON_THROW_ON_ERROR);
+
+        $this->assertSame(5, count($tokens));
+
+        foreach (Device::all() as $device) {
+            $entry = $tokens[$device->plant->name];
+
+            $this->assertSame($device->id, $entry['device_id']);
+            $this->assertSame($device->serial_number, $entry['serial_number']);
+
+            // The hashed form is what the database holds; the plaintext in
+            // the file is the only place the secret exists unhashed.
+            $this->assertSame(hash('sha256', $entry['token']), $device->api_token);
+        }
+    }
+
+    public function test_a_token_from_the_seeded_file_posts_a_reading(): void
+    {
+        Storage::fake('local');
+
+        $this->seed();
+
+        $tokens = json_decode(Storage::disk('local')->get('device-tokens.json'), true, flags: JSON_THROW_ON_ERROR);
+
+        $monstera = Device::query()->whereHas('plant', fn ($query) => $query->where('name', 'Monstera'))->firstOrFail();
+        $payload = [
+            'co2' => 850,
+            'temperature' => 21.4,
+            'humidity' => 61.5,
+            'measured_at' => now()->subMinute()->toIso8601String(),
+        ];
+
+        $this->postJson('/api/readings', $payload, [
+            'X-Device-Token' => $tokens['Monstera']['token'],
+        ])->assertCreated();
+
+        $this->assertDatabaseHas('readings', [
+            'device_id' => $monstera->id,
+            'co2' => 850,
+        ]);
     }
 }

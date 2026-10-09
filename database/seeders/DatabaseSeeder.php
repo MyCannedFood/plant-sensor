@@ -15,6 +15,7 @@ use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Eloquent\Factories\Sequence;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 /**
@@ -144,6 +145,7 @@ class DatabaseSeeder extends Seeder
         $this->seedGlobalThresholds();
 
         $devices = [];
+        $tokens = [];
 
         foreach (self::PLANTS as $index => $definition) {
             $plant = Plant::query()->firstOrCreate(
@@ -151,10 +153,18 @@ class DatabaseSeeder extends Seeder
                 ['species' => $definition['species'], 'location' => $definition['location'], 'notes' => $definition['notes']],
             );
 
+            // Hash at rest: the database stores sha256(token), never the
+            // plaintext. generateToken() returns the 40-character secret
+            // exactly once; this run keeps it for the local token file the
+            // simulator reads, so the plaintext never sits in the database.
+            // The api_token value here is only a NOT NULL placeholder for the
+            // first insert; generateToken() replaces it with a real hash.
             $device = Device::query()->firstOrCreate(
                 ['plant_id' => $plant->id],
                 ['name' => "{$definition['label']} Sensor", 'serial_number' => strtoupper(Str::random(12)), 'api_token' => hash('sha256', Str::random(40))],
             );
+
+            $token = $device->generateToken();
 
             $this->seedThresholds($device, $definition['thresholds']);
 
@@ -164,9 +174,34 @@ class DatabaseSeeder extends Seeder
             $this->seedReadings($device, $definition['conditions'], $parameters);
 
             $devices[$index] = ['device' => $device, 'conditions' => $definition['conditions'], 'parameters' => $parameters];
+
+            $tokens[$definition['label']] = [
+                'device_id' => $device->id,
+                'serial_number' => $device->serial_number,
+                'token' => $token,
+            ];
         }
 
         $this->seedIncidents($devices);
+        $this->writeDeviceTokens($tokens);
+    }
+
+    /**
+     * Write the plaintext device tokens to a local file for the simulator.
+     *
+     * storage/app/device-tokens.json is gitignored: it exists so the artisan
+     * simulator (and firmware during development) can authenticate without a
+     * token surviving in the database. The file is intentionally written
+     * last, after every seeding step has had a chance to fail.
+     *
+     * @param  array<string, array{device_id: int, serial_number: string, token: string}>  $tokens
+     */
+    private function writeDeviceTokens(array $tokens): void
+    {
+        Storage::disk('local')->put(
+            'device-tokens.json',
+            json_encode($tokens, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES),
+        );
     }
 
     /**

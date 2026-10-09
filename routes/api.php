@@ -18,8 +18,9 @@ use Illuminate\Support\Facades\Route;
 // A cheap liveness check the simulator can hit before it starts posting.
 Route::get('/ping', fn () => response()->json(['status' => 'ok']));
 
-// The ingest endpoint. The rate limiter joins the middleware stack in the
-// same file this alias lives in; both are registered in bootstrap/app.php.
+// The ingest endpoint, guarded by the device.auth alias and then by a
+// per-device rate limiter (30/min), both registered in bootstrap/app.php.
+// Order matters: auth must run first so the limiter can key on the device.
 Route::post('/readings', [ReadingController::class, 'store'])
-    ->middleware('device.auth')
+    ->middleware(['device.auth', 'throttle:device-ingest'])
     ->name('readings.store');
