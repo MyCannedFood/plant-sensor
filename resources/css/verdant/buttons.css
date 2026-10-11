@@ -1,0 +1,141 @@
+.save-btn {
+    background: var(--good);
+    color: #fff;
+    border: none;
+    border-radius: 100px;
+    padding: 9px 20px;
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.save-btn:hover {
+    filter: brightness(1.07);
+}
+
+
+
+.save-confirm {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    color: var(--good);
+    opacity: 0;
+    transition: opacity 0.25s ease;
+}
+
+.save-confirm .icon {
+    width: 13px;
+    height: 13px;
+}
+
+.save-confirm.show {
+    opacity: 1;
+}
+
+
+
+.add-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--surface);
+    color: var(--good);
+    border: 1px solid rgba(29, 158, 107, 0.4);
+    border-radius: 100px;
+    padding: 8px 16px;
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.add-btn:hover {
+    background: var(--good-dim);
+}
+
+.add-btn .icon {
+    width: 15px;
+    height: 15px;
+}
+
+
+
+.btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: transparent;
+    color: var(--text-2);
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    padding: 7px 14px;
+    font-family: var(--font-display);
+    font-size: 12.5px;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.btn-ghost:hover {
+    color: var(--text);
+    border-color: var(--text-3);
+}
+
+.btn-ghost .icon {
+    width: 14px;
+    height: 14px;
+}
+
+
+
+.btn-danger {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--alert);
+    color: #fff;
+    border: none;
+    border-radius: 100px;
+    padding: 8px 16px;
+    font-family: var(--font-display);
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.btn-danger:hover {
+    filter: brightness(1.07);
+}
+
+
+
+.btn-danger-ghost {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: transparent;
+    color: var(--alert);
+    border: 1px solid rgba(217, 75, 61, 0.35);
+    border-radius: 100px;
+    padding: 7px 14px;
+    font-family: var(--font-display);
+    font-size: 12.5px;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.btn-danger-ghost:hover {
+    background: var(--alert-dim);
+}
+
+.btn-danger-ghost .icon {
+    width: 14px;
+    height: 14px;
+}
+

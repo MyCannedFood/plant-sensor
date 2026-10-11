@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['parameter', 'min_value', 'max_value'])]
+#[Fillable(['device_id', 'parameter', 'min_value', 'max_value'])]
 class Threshold extends Model
 {
     /** @use HasFactory<ThresholdFactory> */

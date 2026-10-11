@@ -1,0 +1,342 @@
+/* ---------- Monitor ---------- */
+
+.mon-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+}
+
+.mon-title h2 {
+    margin: 0;
+    font-size: 19px;
+    font-weight: 700;
+}
+
+.mon-title p {
+    margin: 3px 0 0;
+    font-size: 13px;
+    color: var(--text-3);
+}
+
+.stat-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+@media (max-width: 680px) {
+    .stat-grid { grid-template-columns: 1fr; }
+}
+
+.stat-card {
+    position: relative;
+    background: var(--surface);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-md);
+    padding: 16px 17px 14px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+}
+
+.stat-card::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: var(--accent, var(--good));
+}
+
+.stat-card.flag-good { --accent: var(--good); }
+.stat-card.flag-watch { --accent: var(--watch); }
+.stat-card.flag-alert { --accent: var(--alert); }
+.stat-card.flag-offline { --accent: var(--border); }
+
+.stat-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.stat-label {
+    margin: 0;
+    font-size: 12.5px;
+    color: var(--text-2);
+    font-weight: 500;
+}
+
+.stat-tag {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 9px;
+    border-radius: 100px;
+}
+
+.flag-good .stat-tag { color: var(--good); background: var(--good-dim); }
+.flag-watch .stat-tag { color: var(--watch); background: var(--watch-dim); }
+.flag-alert .stat-tag { color: var(--alert); background: var(--alert-dim); }
+.flag-offline .stat-tag { color: var(--text-3); background: var(--surface-3); }
+
+.stat-value {
+    font-family: var(--font-mono);
+    font-size: 30px;
+    font-weight: 500;
+    margin: 0;
+    letter-spacing: -0.02em;
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+}
+
+.stat-value .unit {
+    font-size: 13px;
+    color: var(--text-3);
+    font-weight: 400;
+}
+
+.stat-range {
+    margin: 8px 0 0;
+    font-size: 11px;
+    color: var(--text-3);
+}
+
+.stat-range b {
+    color: var(--text-2);
+    font-weight: 500;
+}
+
+.panel {
+    background: var(--surface);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-lg);
+    padding: 18px 20px;
+    margin-bottom: 14px;
+    box-shadow: var(--shadow);
+}
+
+.panel-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+}
+
+.panel-title {
+    margin: 0;
+    font-size: 14.5px;
+    font-weight: 600;
+}
+
+.panel-sub {
+    margin: 2px 0 0;
+    font-size: 11.5px;
+    color: var(--text-3);
+}
+
+.panel-controls {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.segmented {
+    display: inline-flex;
+    background: var(--surface-3);
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    padding: 3px;
+    gap: 2px;
+}
+
+.segmented button {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-2);
+    background: transparent;
+    border: none;
+    border-radius: 100px;
+    padding: 5px 12px;
+    cursor: pointer;
+}
+
+.segmented button.active {
+    background: var(--good);
+    color: #fff;
+    font-weight: 600;
+}
+
+.segmented button:not(.active):hover {
+    color: var(--text);
+}
+
+#trendChart {
+    margin-top: 4px;
+}
+
+.group-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+}
+
+@media (max-width: 760px) {
+    .group-grid { grid-template-columns: 1fr; }
+}
+
+/* device status */
+
+.dev-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border-soft);
+}
+
+.dev-row:last-child {
+    border-bottom: none;
+}
+
+.dev-name {
+    font-size: 13.5px;
+    font-weight: 600;
+}
+
+.dev-sat {
+    font-size: 11px;
+    color: var(--text-3);
+    margin-top: 1px;
+}
+
+.sensor-badge {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 500;
+    background: var(--surface-3);
+    border: 1px solid var(--border);
+    color: var(--text-2);
+    border-radius: 6px;
+    padding: 2px 6px;
+    margin-right: 5px;
+}
+
+.dev-meta {
+    margin-left: auto;
+    text-align: right;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.dev-lastseen {
+    font-size: 11px;
+    color: var(--text-3);
+}
+
+.dev-readings {
+    font-size: 11px;
+    color: var(--text-3);
+}
+
+.dev-chip-status {
+    font-size: 10.5px;
+    text-align: right;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    justify-content: flex-end;
+}
+
+.text-on { color: var(--good); }
+.text-off { color: var(--text-3); }
+
+.dot-inline {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    background: currentColor;
+}
+
+
+/* thresholds */
+
+.threshold-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+}
+
+@media (max-width: 680px) {
+    .threshold-grid { grid-template-columns: 1fr; }
+}
+
+.t-field {
+    background: var(--surface-2);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-md);
+    padding: 12px 13px;
+}
+
+.t-field h4 {
+    margin: 0 0 8px;
+    font-size: 12.5px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.t-field .t-unit {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-3);
+    font-weight: 400;
+}
+
+.t-inputs {
+    display: flex;
+    gap: 8px;
+}
+
+.t-inputs label {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 10.5px;
+    color: var(--text-3);
+}
+
+.t-inputs input {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    padding: 7px 9px;
+    border-radius: 7px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    width: 100%;
+}
+
+.t-inputs input:focus-visible {
+    outline: 2px solid var(--good);
+    outline-offset: 1px;
+}
+
+.t-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 13px;
+}
+

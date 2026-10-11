@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Verdant — Greenhouse Monitor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/apexcharts/dist/apexcharts.min.js"></script>
+<style>
+  :root {
+    --bg: #F6F7F4;
+    --surface: #FFFFFF;
+    --surface-2: #F0F4F0;
+    --surface-3: #E8EEE8;
+    --border: #E2E8E1;
+    --border-soft: #E9EDE9;
+    --text: #17251C;
+    --text-2: #5A6B5F;
+    --text-3: #87948A;
+    --good: #1D9E6B;
+    --good-dim: rgba(29, 158, 107, 0.10);
+    --watch: #C17D1C;
+    --watch-dim: rgba(193, 125, 28, 0.11);
+    --alert: #D94B3D;
+    --alert-dim: rgba(217, 75, 61, 0.11);
+    --radius-sm: 9px;
+    --radius-md: 14px;
+    --radius-lg: 18px;
+    --shadow: 0 1px 2px rgba(23, 37, 28, 0.04), 0 8px 24px rgba(23, 37, 28, 0.05);
+    --font-body: 'Inter', system-ui, sans-serif;
+    --font-display: 'Space Grotesk', var(--font-body);
+    --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  }
+  * { box-sizing: border-box; }
+  html { height: 100%; }
+  body {
+    margin: 0; min-height: 100%; color: var(--text);
+    font-family: var(--font-body);
+    background:
+      radial-gradient(1000px 500px at 100% -10%, rgba(29, 158, 107, 0.05), transparent 55%),
+      radial-gradient(800px 460px at -5% 0%, rgba(74, 111, 214, 0.035), transparent 55%),
+      var(--bg);
+    -webkit-font-smoothing: antialiased;
+  }
+  .mono { font-family: var(--font-mono); }
+  h1, h2, h3 { font-family: var(--font-display); }
+
+  /* ---------- Topbar ---------- */
+  .topbar { position: sticky; top: 0; z-index: 40; background: rgba(255,255,255,0.85); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border-soft); }
+  .topbar-inner { max-width: 1040px; margin: 0 auto; padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+  .brand { display: flex; align-items: center; gap: 11px; }
+  .brand-mark {
+    width: 34px; height: 34px; border-radius: 11px; flex-shrink: 0;
+    background: linear-gradient(150deg, var(--good) 0%, #157349 100%);
+    box-shadow: 0 6px 16px rgba(29,158,107,0.28); position: relative;
+  }
+  .brand-mark::before {
+    content: ""; position: absolute; left: 50%; top: 50%; width: 15px; height: 15px;
+    transform: translate(-50%, -52%) rotate(45deg);
+    border-radius: 2px 70% 2px 70%; background: rgba(255,255,255,0.85);
+  }
+  .brand h1 { font-size: 16px; font-weight: 700; margin: 0; letter-spacing: -0.01em; }
+  .brand p { margin: 1px 0 0; font-size: 12px; color: var(--text-3); }
+  .topbar-right { display: flex; align-items: center; gap: 10px; }
+  .live-badge { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 500; color: var(--good); background: var(--good-dim); border: 1px solid rgba(29,158,107,0.22); border-radius: 100px; padding: 5px 11px; }
+  .live-badge .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--good); animation: pulse 1.8s ease infinite; }
+  @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(29,158,107,0.4); } 70% { box-shadow: 0 0 0 6px rgba(29,158,107,0); } 100% { box-shadow: 0 0 0 0 rgba(29,158,107,0); } }
+  .clock { font-size: 12px; color: var(--text-3); }
+  .bell {
+    position: relative; display: inline-flex; align-items: center; gap: 7px; cursor: pointer;
+    font-family: var(--font-body); font-size: 12.5px; font-weight: 500; color: var(--text-2);
+    background: var(--surface); border: 1px solid var(--border); border-radius: 100px; padding: 6px 13px 6px 12px;
+  }
+  .bell:hover { color: var(--text); border-color: var(--border); box-shadow: var(--shadow); }
+  .bell-count {
+    min-width: 17px; height: 17px; padding: 0 5px; border-radius: 50%;
+    background: var(--alert); color: #fff; font-size: 10px; font-weight: 700;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+
+  /* ---------- Layout ---------- */
+  .page { max-width: 1040px; margin: 0 auto; padding: 26px 20px 60px; }
+  .view-title { margin: 0 0 4px; font-size: 21px; font-weight: 700; letter-spacing: -0.01em; }
+  .view-sub { margin: 0 0 20px; font-size: 13.5px; color: var(--text-3); }
+  .back-link { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-2); text-decoration: none; margin-bottom: 14px; font-weight: 500; }
+  .back-link:hover { color: var(--good); }
+
+  /* ---------- Overview cards ---------- */
+  .plant-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+  @media (max-width: 860px) { .plant-grid { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 560px) { .plant-grid { grid-template-columns: 1fr; } }
+  .plant-card {
+    background: var(--surface); border: 1px solid var(--border-soft); border-radius: var(--radius-lg);
+    padding: 18px; cursor: pointer; position: relative; transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+  }
+  .plant-card:hover { transform: translateY(-2px); border-color: rgba(29,158,107,0.35); box-shadow: 0 10px 30px rgba(23,37,28,0.07); }
+  .plant-card .card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+  .plant-card h3 { margin: 0; font-size: 15px; font-weight: 600; }
+  .plant-card .species { margin: 2px 0 0; font-size: 11.5px; color: var(--text-3); font-style: italic; }
+  .plant-card .location { margin: 3px 0 0; font-size: 11.5px; color: var(--text-2); }
+  .alert-count-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; background: var(--surface-2); border: 1px solid var(--border-soft); border-radius: 100px; padding: 3px 9px; color: var(--text-2); }
+  .alert-count-chip.has-alerts { background: var(--alert-dim); border-color: rgba(217,75,61,0.25); color: var(--alert); }
+  .metric-row { display: flex; flex-direction: column; gap: 6px; margin-top: 14px; }
+  .metric-chip { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding: 7px 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-soft); background: var(--surface-2); }
+  .metric-chip .m-label { font-size: 11px; color: var(--text-3); }
+  .metric-chip .m-value { font-family: var(--font-mono); font-size: 13px; font-weight: 500; display: flex; align-items: baseline; gap: 4px; }
+  .metric-chip .m-value .m-unit { font-size: 10px; color: var(--text-3); font-weight: 400; }
+  .metric-chip .m-trend { font-family: var(--font-mono); font-size: 10.5px; }
+  .metric-chip .m-trend.up { color: var(--good); }
+  .metric-chip .m-trend.down { color: var(--alert); }
+  .metric-chip.flag-good { border-left: 3px solid var(--good); }
+  .metric-chip.flag-watch { border-left: 3px solid var(--watch); background: var(--watch-dim); }
+  .metric-chip.flag-alert { border-left: 3px solid var(--alert); background: var(--alert-dim); }
+  .card-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 13px; font-size: 11px; color: var(--text-3); }
+  .status-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
+  .status-online { background: var(--good); }
+  .status-offline { background: var(--text-3); }
+
+  /* ---------- Monitor ---------- */
+  .mon-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; }
+  .mon-title h2 { margin: 0; font-size: 19px; font-weight: 700; }
+  .mon-title p { margin: 3px 0 0; font-size: 13px; color: var(--text-3); }
+  .device-chip { display: inline-flex; align-items: center; gap: 8px; background: var(--surface); border: 1px solid var(--border-soft); border-radius: 100px; padding: 7px 6px 7px 13px; box-shadow: var(--shadow); }
+  .device-chip select { border: none; background: var(--surface-3); border-radius: 6px; padding: 5px 9px; font-family: var(--font-body); font-size: 12.5px; color: var(--text); cursor: pointer; outline: none; }
+  .device-chip .d-label { font-size: 11.5px; color: var(--text-3); white-space: nowrap; }
+
+  .stat-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 14px; }
+  @media (max-width: 680px) { .stat-grid { grid-template-columns: 1fr; } }
+  .stat-card { position: relative; background: var(--surface); border: 1px solid var(--border-soft); border-radius: var(--radius-md); padding: 16px 17px 14px; box-shadow: var(--shadow); overflow: hidden; }
+  .stat-card::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--accent, var(--good)); }
+  .stat-card.flag-good { --accent: var(--good); }
+  .stat-card.flag-watch { --accent: var(--watch); }
+  .stat-card.flag-alert { --accent: var(--alert); }
+  .stat-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .stat-label { margin: 0; font-size: 12.5px; color: var(--text-2); font-weight: 500; }
+  .stat-tag { font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 100px; }
+  .flag-good .stat-tag { color: var(--good); background: var(--good-dim); }
+  .flag-watch .stat-tag { color: var(--watch); background: var(--watch-dim); }
+  .flag-alert .stat-tag { color: var(--alert); background: var(--alert-dim); }
+  .stat-value { font-family: var(--font-mono); font-size: 30px; font-weight: 500; margin: 0; letter-spacing: -0.02em; display: flex; align-items: baseline; gap: 6px; }
+  .stat-value .unit { font-size: 13px; color: var(--text-3); font-weight: 400; }
+  .stat-range { margin: 8px 0 0; font-size: 11px; color: var(--text-3); }
+  .stat-range b { color: var(--text-2); font-weight: 500; }
+
+  .panel { background: var(--surface); border: 1px solid var(--border-soft); border-radius: var(--radius-lg); padding: 18px 20px; margin-bottom: 14px; box-shadow: var(--shadow); }
+  .panel-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+  .panel-title { margin: 0; font-size: 14.5px; font-weight: 600; }
+  .panel-sub { margin: 2px 0 0; font-size: 11.5px; color: var(--text-3); }
+
+  .segmented { display: inline-flex; background: var(--surface-3); border: 1px solid var(--border); border-radius: 100px; padding: 3px; gap: 2px; }
+  .segmented button {
+    font-family: var(--font-mono); font-size: 11px; color: var(--text-2);
+    background: transparent; border: none; border-radius: 100px; padding: 5px 12px; cursor: pointer;
+  }
+  .segmented button.active { background: var(--good); color: #fff; font-weight: 600; }
+  .segmented button:not(.active):hover { color: var(--text); }
+  .segmented button:disabled { opacity: 0.35; cursor: not-allowed; }
+
+  #trendChart { margin-top: 4px; }
+
+  .group-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 760px) { .group-grid { grid-template-columns: 1fr; } }
+
+  /* device status */
+  .dev-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border-soft); }
+  .dev-row:last-child { border-bottom: none; }
+  .dev-name { font-size: 13.5px; font-weight: 600; }
+  .dev-sat { font-size: 11px; color: var(--text-3); margin-top: 1px; }
+  .sensor-badge { display: inline-block; font-family: var(--font-mono); font-size: 10px; font-weight: 500; background: var(--surface-3); border: 1px solid var(--border); color: var(--text-2); border-radius: 6px; padding: 2px 6px; margin-right: 5px; }
+  .dev-meta { margin-left: auto; text-align: right; display: flex; flex-direction: column; gap: 2px; }
+  .dev-lastseen { font-size: 11px; color: var(--text-3); }
+  .dev-readings { font-size: 11px; color: var(--text-3); }
+  .dev-chip-status { font-size: 10.5px; text-align: right; }
+
+  /* alerts feed */
+  .alert-item { display: flex; gap: 11px; padding: 11px 0; border-bottom: 1px solid var(--border-soft); }
+  .alert-item:last-child { border-bottom: none; padding-bottom: 2px; }
+  .alert-time { font-family: var(--font-mono); font-size: 11px; color: var(--text-3); width: 64px; flex-shrink: 0; padding-top: 2px; }
+  .alert-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 7px; }
+  .sev-watch .alert-dot { background: var(--watch); }
+  .sev-alert .alert-dot { background: var(--alert); }
+  .sev-good .alert-dot { background: var(--good); }
+  .alert-msg { margin: 0; font-size: 13px; line-height: 1.45; }
+  .alert-meta { margin: 3px 0 0; font-size: 11px; color: var(--text-3); }
+  .empty-note { font-size: 12.5px; color: var(--text-3); text-align: center; padding: 18px 0; }
+  .alert-link { font-size: 12px; color: var(--good); text-decoration: none; font-weight: 500; }
+  .alert-link:hover { text-decoration: underline; }
+
+  /* thresholds */
+  .threshold-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+  @media (max-width: 680px) { .threshold-grid { grid-template-columns: 1fr; } }
+  .t-field { background: var(--surface-2); border: 1px solid var(--border-soft); border-radius: var(--radius-md); padding: 12px 13px; }
+  .t-field h4 { margin: 0 0 8px; font-size: 12.5px; font-weight: 600; display: flex; align-items: center; gap: 7px; }
+  .t-field .t-unit { font-family: var(--font-mono); font-size: 10px; color: var(--text-3); font-weight: 400; }
+  .t-inputs { display: flex; gap: 8px; }
+  .t-inputs label { flex: 1; display: flex; flex-direction: column; gap: 4px; font-size: 10.5px; color: var(--text-3); }
+  .t-inputs input { font-family: var(--font-mono); font-size: 13px; padding: 7px 9px; border-radius: 7px; border: 1px solid var(--border); background: var(--surface); color: var(--text); width: 100%; }
+  .t-inputs input:focus-visible { outline: 2px solid var(--good); outline-offset: 1px; }
+  .t-actions { display: flex; align-items: center; gap: 12px; margin-top: 13px; }
+  .save-btn { background: var(--good); color: #fff; border: none; border-radius: 100px; padding: 9px 20px; font-family: var(--font-display); font-size: 13px; font-weight: 600; cursor: pointer; }
+  .save-btn:hover { filter: brightness(1.07); }
+  .save-confirm { font-size: 12px; color: var(--good); opacity: 0; transition: opacity .25s ease; }
+
+  /* alerts view */
+  .filter-tabs { display: flex; gap: 8px; margin-bottom: 14px; }
+  .filter-tabs button { font-family: var(--font-body); font-size: 12.5px; font-weight: 500; color: var(--text-2); background: var(--surface); border: 1px solid var(--border); border-radius: 100px; padding: 6px 14px; cursor: pointer; }
+  .filter-tabs button.active { color: #fff; background: var(--good); border-color: var(--good); }
+  .alert-list .alert-item { padding: 13px 0; }
+  .alert-list .alert-msg b { font-weight: 600; }
+
+  footer.note { font-size: 11.5px; color: var(--text-3); text-align: center; margin-top: 26px; }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true"></div>
+      <div>
+        <h1>Verdant</h1>
+        <p>Greenhouse environment monitor</p>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <span class="live-badge"><span class="dot"></span>Live</span>
+      <span class="clock mono" id="clock">--:--:--</span>
+      <button class="bell" id="bellBtn" type="button">🔔 Alerts <span class="bell-count" id="bellCount">0</span></button>
+    </div>
+  </div>
+</header>
+
+<main class="page">
+
+  <!-- ============ OVERVIEW ============ -->
+  <section id="view-overview">
+    <h1 class="view-title">Overview</h1>
+    <p class="view-sub">All monitored rooms, latest conditions and status. Click a room to inspect it.</p>
+    <div class="plant-grid" id="plantGrid"></div>
+  </section>
+
+  <!-- ============ MONITOR ============ -->
+  <section id="view-monitor" hidden>
+    <a href="#" class="back-link" data-view="overview">← Overview</a>
+    <div class="mon-head">
+      <div class="mon-title">
+        <h2 id="monTitle">Room</h2>
+        <p id="monSub">Location</p>
+      </div>
+      <div class="device-chip">
+        <span class="d-label">Device</span>
+        <select id="devSelect" aria-label="Device"></select>
+      </div>
+    </div>
+
+    <div class="stat-grid" id="statGrid"></div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <div>
+          <h3 class="panel-title">Trend</h3>
+          <p class="panel-sub" id="chartSub">Measurement history with threshold band</p>
+        </div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <div class="segmented" id="metricSeg" role="group" aria-label="Metric"></div>
+          <div class="segmented" id="rangeSeg" role="group" aria-label="Range">
+            <button type="button" data-range="1h">1H</button>
+            <button type="button" data-range="24h" class="active">24H</button>
+            <button type="button" data-range="7d">7D</button>
+          </div>
+        </div>
+      </div>
+      <div id="trendChart"></div>
+    </div>
+
+    <div class="group-grid">
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <h3 class="panel-title">Devices</h3>
+            <p class="panel-sub">Nodes in this room</p>
+          </div>
+        </div>
+        <div id="devList"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <h3 class="panel-title">Recent alerts</h3>
+            <p class="panel-sub">Latest events on this device</p>
+          </div>
+          <a href="#" class="alert-link" data-view="alerts">View all →</a>
+        </div>
+        <div id="alertFeed"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <div>
+          <h3 class="panel-title">Threshold settings</h3>
+          <p class="panel-sub">Alerts fire when a measurement crosses these bounds</p>
+        </div>
+      </div>
+      <form id="thresholdForm" class="threshold-grid" autocomplete="off"></form>
+      <div class="t-actions">
+        <button type="button" class="save-btn" id="saveBtn">Save thresholds</button>
+        <span class="save-confirm mono" id="saveConfirm">Saved ✓</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ALERTS ============ -->
+  <section id="view-alerts" hidden>
+    <a href="#" class="back-link" data-view="overview">← Overview</a>
+    <h1 class="view-title">Alert history</h1>
+    <p class="view-sub">Every event across all rooms, newest first.</p>
+    <div class="filter-tabs" id="alertTabs">
+      <button type="button" data-sev="all" class="active">All</button>
+      <button type="button" data-sev="alert">Alert</button>
+      <button type="button" data-sev="watch">Watch</button>
+      <button type="button" data-sev="good">Resolved</button>
+    </div>
+    <div class="panel alert-list" id="alertList"></div>
+  </section>
+
+  <footer class="note">Design mockup · sensor data simulated · charts by ApexCharts</footer>
+</main>
+
+<script>
+/* ------------------------------------------------------------------ */
+/*  Simulated sensor data (mirrors the seeded schema shapes)           */
+/* ------------------------------------------------------------------ */
+const METRICS = {
+  co2:          { label: 'CO₂',  unit: 'ppm', short: 'CO₂',            decimals: 0 },
+  temperature:  { label: 'Temperature', unit: '°C', short: 'Temp',     decimals: 1 },
+  humidity:     { label: 'Humidity',    unit: '%',  short: 'Humidity', decimals: 0 },
+};
+
+const PLANTS = {
+  monstera: {
+    name: 'Monstera Room', species: 'Monstera deliciosa', location: 'Greenhouse · Zone 1',
+    sensors: ['co2', 'temperature', 'humidity'],
+    center:  { co2: 810, temperature: 21.5, humidity: 68 },
+    spread:  { co2: 90,  temperature: 2.2,  humidity: 5 },
+    thresholds: { co2: [400, 1200], temperature: [15, 28], humidity: [40, 75] },
+    readingsToday: 143, lastSeen: '14s',
+  },
+  cactus: {
+    name: 'Cactus Corner', species: 'Echinocactus grusonii', location: 'Greenhouse · Zone 2',
+    sensors: ['temperature', 'humidity'],            /* DHT22 only — no CO₂ */
+    center:  { temperature: 35, humidity: 45 },
+    spread:  { temperature: 2.5, humidity: 6 },
+    thresholds: { temperature: [18, 38], humidity: [20, 60] },
+    readingsToday: 140, lastSeen: '32s',
+  },
+  calathea: {
+    name: 'Calathea Shelf', species: 'Calathea orbifolia', location: 'House · Living room',
+    sensors: ['co2'],                                /* MH-Z19C only — no DHT22 */
+    center:  { co2: 640 },
+    spread:  { co2: 70 },
+    thresholds: { co2: [400, 1000] },
+    readingsToday: 141, lastSeen: '8s',
+  },
+  fern: {
+    name: 'Fern Corner', species: 'Nephrolepis exaltata', location: 'Greenhouse · Zone 3',
+    sensors: ['co2', 'temperature', 'humidity'],
+    center:  { co2: 1140, temperature: 22, humidity: 58 },
+    spread:  { co2: 40,   temperature: 1.8, humidity: 6 },
+    thresholds: { co2: [400, 1200], temperature: [15, 28], humidity: [40, 75] },
+    readingsToday: 142, lastSeen: '41s',
+  },
+  fiddle: {
+    name: 'Fiddle Leaf Nook', species: 'Ficus lyrata', location: 'House · Sunroom',
+    sensors: ['temperature', 'humidity'],
+    center:  { temperature: 17.6, humidity: 52 },
+    spread:  { temperature: 1.6,  humidity: 6 },
+    thresholds: { temperature: [18, 30], humidity: [35, 70] },
+    readingsToday: 139, lastSeen: '1m 22s',
+  },
+};
+
+const ALERTS = [
+  { room: 'Monstera Room', sev: 'watch', time: '08:12', msg: 'Humidity reached <b>74%</b> — within 1% of the 75% ceiling', meta: 'NDIR + DHT22 node · Zone 1' },
+  { room: 'Fern Corner',   sev: 'alert', time: '06:40', msg: 'CO₂ at <b>1185 ppm</b> crossing the 1200 ppm advisory ceiling', meta: 'NDIR node · Zone 3' },
+  { room: 'Monstera Room', sev: 'good',  time: '05:02', msg: 'Temperature back in band after reaching 28.6 °C', meta: 'NDIR + DHT22 node · Zone 1' },
+  { room: 'Fiddle Leaf Nook', sev: 'watch', time: '22:14 · yesterday', msg: 'Temperature at <b>17.4 °C</b> below the 18 °C floor', meta: 'DHT22 node · Sunroom' },
+  { room: 'Calathea Shelf', sev: 'good',  time: '19:45 · yesterday', msg: 'CO₂ normalised to 640 ppm after ventilation', meta: 'NDIR node · Living room' },
+  { room: 'Cactus Corner', sev: 'watch',  time: '16:20 · yesterday', msg: 'Temperature held at <b>37 °C</b>, near the 38 °C ceiling for 2h', meta: 'DHT22 node · Zone 2' },
+  { room: 'Monstera Room', sev: 'alert',  time: '13:05 · yesterday', msg: 'Humidity spiked to <b>81%</b> above the 75% ceiling', meta: 'NDIR + DHT22 node · Zone 1' },
+];
+
+/* ------------------------------------------------------------------ */
+/*  Tiny deterministic PRNG so charts look stable between refreshes    */
+/* ------------------------------------------------------------------ */
+function mulberry32(seed) {
+  return function () {
+    seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function hashString(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+
+const RANGES = {
+  '1h':  { points: 12, step: 5,     fmt: 'HH:mm' },
+  '24h': { points: 24, step: 60,    fmt: 'HH:00' },
+  '7d':  { points: 14, step: 1440,  fmt: 'ddd dd' },
+};
+
+function seriesFor(plant, metric, rangeKey) {
+  const cfg = RANGES[rangeKey];
+  const rnd = mulberry32(hashString(plant.name + metric + rangeKey));
+  const center = plant.center[metric] ?? METRICS[metric].default ?? 50;
+  const spread = plant.spread[metric] ?? center * 0.1;
+  const now = Date.now();
+  const pts = [];
+  let carry = 0;
+  for (let i = 0; i < cfg.points; i++) {
+    const t = now - (cfg.points - 1 - i) * cfg.step * 60000;
+    carry += (rnd() - 0.5) * spread * 1.2 * (rangeKey === '7d' ? 2.4 : rangeKey === '24h' ? 1.5 : 0.9);
+    const spike = rnd() > 0.92 ? spread * 2.2 : 0;
+    let v = center + carry + spike * (rnd() - 0.4);
+    const [lo, hi] = plant.thresholds[metric];
+    v = Math.max(lo - spread, Math.min(hi + spread, v));   /* stay near the band */
+    pts.push({ x: t, y: +v.toFixed(METRICS[metric].decimals) });
+  }
+  return pts;
+}
+
+function classify(plant, metric) {
+  const pts = seriesFor(plant, metric, '24h');
+  const v = pts[pts.length - 1].y;
+  const [lo, hi] = plant.thresholds[metric];
+  const width = (hi - lo) / 2, mid = lo + width;
+  const rel = Math.abs(v - mid) / width;
+  if (v > hi || v < lo) return { sev: 'alert', value: v, prev: pts[pts.length - 2].y };
+  if (rel > 0.72)        return { sev: 'watch', value: v, prev: pts[pts.length - 2].y };
+  return { sev: 'good', value: v, prev: pts[pts.length - 2].y };
+}
+
+const TAG_TEXT = { good: 'Normal', watch: 'Watch', alert: 'Alert' };
+
+/* ------------------------------------------------------------------ */
+/*  State                                                              */
+/* ------------------------------------------------------------------ */
+const state = { view: 'overview', plant: 'monstera', metric: 'co2', range: '24h' };
+let chart = null;
+
+/* ------------------------------------------------------------------ */
+/*  Render helpers                                                     */
+/* ------------------------------------------------------------------ */
+function currentPlant() { return PLANTS[state.plant]; }
+
+function escaped(s) { return s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+
+function renderOverview() {
+  const grid = document.getElementById('plantGrid');
+  grid.innerHTML = Object.entries(PLANTS).map(([key, p]) => {
+    const alertCount = ALERTS.filter(a => a.room === p.name && a.sev !== 'good').length;
+    const chips = p.sensors.map(m => {
+      const { sev, value, prev } = classify(p, m);
+      const trend = value - prev;
+      const arrow = trend > 0.4 ? '<span class="m-trend up">▲</span>'
+                  : trend < -0.4 ? '<span class="m-trend down">▼</span>'
+                  : '<span class="m-trend" style="color:var(--text-3)">—</span>';
+      const [lo, hi] = p.thresholds[m];
+      return `<div class="metric-chip flag-${sev}">
+        <span class="m-label">${METRICS[m].label}</span>
+        <span class="m-value">${value}${METRICS[m].unit === 'ppm' ? '' : ''}<span class="m-unit">${METRICS[m].unit}</span>${arrow}</span>
+      </div>`;
+    }).join('');
+    const statusDot = p.lastSeen.includes('m ') || parseInt(p.lastSeen) > 90 ? 'status-offline' : 'status-online';
+    return `<article class="plant-card" data-plant="${key}">
+      <div class="card-top">
+        <div>
+          <h3>${escaped(p.name)}</h3>
+          <p class="species">${escaped(p.species)}</p>
+          <p class="location">${escaped(p.location)}</p>
+        </div>
+        <span class="alert-count-chip ${alertCount ? 'has-alerts' : ''}">${alertCount ? '⚠ ' + alertCount : '✓ ok'}</span>
+      </div>
+      <div class="metric-row">${chips}</div>
+      <div class="card-foot">
+        <span><span class="status-dot ${statusDot}"></span>${p.readingsToday} readings today</span>
+        <span class="mono">seen ${escaped(p.lastSeen)} ago</span>
+      </div>
+    </article>`;
+  }).join('');
+  document.querySelectorAll('.plant-card').forEach(card => {
+    card.addEventListener('click', () => openPlant(card.dataset.plant));
+  });
+}
+
+function openPlant(key) {
+  state.plant = key;
+  const p = PLANTS[key];
+  state.metric = p.sensors.includes(state.metric) ? state.metric : p.sensors[0];
+  setView('monitor');
+  renderMonitor();
+}
+
+function renderMonitor() {
+  const p = currentPlant();
+  document.getElementById('monTitle').textContent = p.name;
+  document.getElementById('monSub').textContent = `${p.location} · ${p.species}`;
+
+  const dev = document.getElementById('devSelect');
+  dev.innerHTML = `<option>Main node</option>`;
+  dev.dataset.sensors = p.sensors.join(',');
+
+  /* stat cards — only for sensors this device physically has */
+  const grid = document.getElementById('statGrid');
+  grid.innerHTML = p.sensors.map(m => {
+    const { sev, value } = classify(p, m);
+    const [lo, hi] = p.thresholds[m];
+    return `<article class="stat-card flag-${sev}">
+      <div class="stat-top">
+        <p class="stat-label">${METRICS[m].label}</p>
+        <span class="stat-tag">${TAG_TEXT[sev]}</span>
+      </div>
+      <p class="stat-value">${value}<span class="unit">${METRICS[m].unit}</span></p>
+      <p class="stat-range">band <b>${lo}–${hi}</b> ${METRICS[m].unit}</p>
+    </article>`;
+  }).join('');
+
+  /* metric segmented control */
+  const seg = document.getElementById('metricSeg');
+  seg.innerHTML = p.sensors.map(m =>
+    `<button type="button" data-metric="${m}" class="${m === state.metric ? 'active' : ''}">${METRICS[m].short}</button>`).join('');
+  seg.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+    state.metric = b.dataset.metric;
+    seg.querySelectorAll('button').forEach(x => x.classList.toggle('active', x === b));
+    renderChart();
+  }));
+
+  document.getElementById('chartSub').textContent =
+    `${METRICS[state.metric].label} history with threshold band · device shape: ${p.sensors.map(s => s === 'co2' ? 'MH-Z19C' : 'DHT22').join(' + ')}`;
+
+  renderChart();
+  renderDevices();
+  renderAlertFeed();
+  renderThresholds();
+}
+
+function renderChart() {
+  const p = currentPlant();
+  const m = state.metric;
+  const unit = METRICS[m].unit;
+  const [lo, hi] = p.thresholds[m];
+  const pts = seriesFor(p, m, state.range);
+  const lastValue = pts[pts.length - 1].y;
+
+  const opts = {
+    chart: { type: 'area', height: 270, toolbar: { show: false }, zoom: { enabled: true },
+             fontFamily: 'inherit', animations: { enabled: true } },
+    series: [{ name: METRICS[m].label, data: pts }],
+    dataLabels: { enabled: false },
+    stroke: { curve: 'smooth', width: 2.4, colors: [ getCSS('--good') ] },
+    fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.22, opacityTo: 0, stops: [0, 92] } },
+    colors: [ getCSS('--good') ],
+    markers: { size: 0 },
+    grid: { borderColor: '#E6EBE6', strokeDashArray: 4, padding: { left: 8, right: 8 } },
+    xaxis: { type: 'datetime', labels: { style: { colors: '#87948A', fontSize: '10.5px', fontFamily: 'IBM Plex Mono' }, datetimeUTC: false, format: RANGES[state.range].fmt } },
+    yaxis: { labels: { style: { colors: '#87948A', fontSize: '10.5px', fontFamily: 'IBM Plex Mono' } } },
+    tooltip: { x: { format: 'HH:mm · d MMM' } },
+    annotations: {
+      yaxis: [
+        { y: lo, y2: hi, fillColor: '#1D9E6B', opacity: 0.05 },
+        { y: hi, strokeDashArray: 4, borderColor: '#C17D1C', label: { text: `max ${hi} ${unit}`, position: 'right', offsetX: 2, offsetY: -9, style: { fontSize: '10px', fontFamily: 'IBM Plex Mono', color: '#C17D1C', background: 'rgba(255,255,255,0.85)' } } },
+        { y: lo, strokeDashArray: 4, borderColor: '#87948A', label: { text: `min ${lo} ${unit}`, position: 'right', offsetX: 2, offsetY: 12, style: { fontSize: '10px', fontFamily: 'IBM Plex Mono', color: '#87948A', background: 'rgba(255,255,255,0.85)' } } },
+        { x: pts[pts.length-1].x, borderColor: getCSS('--good'), borderWidth: 1, label: { text: `${lastValue}`, position: 'top', offsetY: -8, style: { fontSize: '10.5px', fontFamily: 'IBM Plex Mono', color: '#fff', background: getCSS('--good') } } },
+      ],
+    },
+  };
+
+  if (chart) { chart.updateOptions(opts); }
+  else       { chart = new ApexCharts(document.getElementById('trendChart'), opts); chart.render(); }
+}
+
+function renderDevices() {
+  const p = currentPlant();
+  const badges = p.sensors.map(s => `<span class="sensor-badge">${s === 'co2' ? 'MH-Z19C' : 'DHT22'}</span>`).join('');
+  const offline = parseInt(p.lastSeen) > 90 || p.lastSeen.includes('m ');
+  document.getElementById('devList').innerHTML = `
+    <div class="dev-row">
+      <div>
+        <div class="dev-name">Main node</div>
+        <div class="dev-sat">${badges}</div>
+      </div>
+      <div class="dev-meta">
+        <span class="dev-chip-status" style="color:${offline ? 'var(--text-3)' : 'var(--good)'}">● ${offline ? 'Asleep' : 'Online'}</span>
+        <span class="dev-lastseen">last seen <b class="mono">${escaped(p.lastSeen)}</b> ago</span>
+        <span class="dev-readings">${p.readingsToday} readings today</span>
+      </div>
+    </div>`;
+}
+
+function renderAlertFeed() {
+  const p = currentPlant();
+  const feed = ALERTS.filter(a => a.room === p.name).slice(0, 3);
+  document.getElementById('alertFeed').innerHTML = feed.length ? feed.map(a => alertItemHtml(a)).join('')
+    : '<p class="empty-note">No recent events — all clear.</p>';
+}
+
+function alertItemHtml(a) {
+  return `<div class="alert-item sev-${a.sev}">
+    <span class="alert-time">${a.time}</span>
+    <div>
+      <p class="alert-msg"><span class="alert-dot"></span>${a.msg}</p>
+      <p class="alert-meta">${escaped(a.meta)} · ${a.sev}</p>
+    </div>
+  </div>`;
+}
+
+function renderThresholds() {
+  const p = currentPlant();
+  const form = document.getElementById('thresholdForm');
+  form.innerHTML = p.sensors.map(m => {
+    const [lo, hi] = p.thresholds[m];
+    return `<div class="t-field">
+      <h4>${METRICS[m].label} <span class="t-unit">· ${METRICS[m].unit}</span></h4>
+      <div class="t-inputs">
+        <label>Min <input type="number" data-min="${m}" value="${lo}" step="${m === 'temperature' ? 0.5 : 5}"></label>
+        <label>Max <input type="number" data-max="${m}" value="${hi}" step="${m === 'temperature' ? 0.5 : 5}"></label>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderAlerts() {
+  renderAlertList('all');
+  document.querySelectorAll('#alertTabs button').forEach(b => b.addEventListener('click', () => {
+    document.querySelectorAll('#alertTabs button').forEach(x => x.classList.toggle('active', x === b));
+    renderAlertList(b.dataset.sev);
+  }));
+}
+
+function renderAlertList(sev) {
+  const list = ALERTS.filter(a => sev === 'all' || a.sev === sev);
+  document.getElementById('alertList').innerHTML = list.length
+    ? list.map(a => `<div class="alert-item sev-${a.sev}">
+        <span class="alert-time">${a.time}</span>
+        <div>
+          <p class="alert-msg"><span class="alert-dot"></span><b>${escaped(a.room)}</b> — ${a.msg}</p>
+          <p class="alert-meta">${escaped(a.meta)} · ${a.sev}</p>
+        </div></div>`).join('')
+    : '<p class="empty-note">Nothing here.</p>';
+  const unresolved = ALERTS.filter(a => a.sev !== 'good').length;
+  document.getElementById('bellCount').textContent = unresolved;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Navigation                                                         */
+/* ------------------------------------------------------------------ */
+function setView(view) {
+  state.view = view;
+  ['overview', 'monitor', 'alerts'].forEach(v => {
+    document.getElementById('view-' + v).hidden = v !== view;
+  });
+  window.scrollTo({ top: 0 });
+  if (view === 'overview') renderOverview();
+  if (view === 'alerts') renderAlerts();
+}
+
+function getCSS(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+
+document.querySelectorAll('[data-view]').forEach(a => a.addEventListener('click', (e) => {
+  e.preventDefault(); setView(a.dataset.view);
+}));
+document.getElementById('bellBtn').addEventListener('click', () => setView('alerts'));
+document.querySelectorAll('#rangeSeg button').forEach(b => b.addEventListener('click', () => {
+  state.range = b.dataset.range;
+  document.querySelectorAll('#rangeSeg button').forEach(x => x.classList.toggle('active', x === b));
+  renderChart();
+}));
+
+/* thresholds save → updates chart band + stat ranges (mock) */
+document.getElementById('saveBtn').addEventListener('click', () => {
+  const p = currentPlant();
+  const read = (sel) => {
+    const el = document.querySelector('#thresholdForm ' + sel);
+    return el ? parseFloat(el.value) : NaN;
+  };
+  p.sensors.forEach(m => {
+    const [oldLo, oldHi] = p.thresholds[m];
+    const lo = read(`[data-min="${m}"]`);
+    const hi = read(`[data-max="${m}"]`);
+    p.thresholds[m] = [Number.isFinite(lo) ? lo : oldLo, Number.isFinite(hi) ? hi : oldHi];
+  });
+  renderMonitor();
+  const c = document.getElementById('saveConfirm');
+  c.style.opacity = 1;
+  clearTimeout(window.__t); window.__t = setTimeout(() => c.style.opacity = 0, 1800);
+});
+
+/* live clock */
+const clock = document.getElementById('clock');
+setInterval(() => clock.textContent = new Date().toLocaleTimeString('en-GB'), 1000);
+
+/* boot */
+setView('overview');
+</script>
+</body>
+</html>

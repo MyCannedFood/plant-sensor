@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Str;
 
 #[Fillable(['name', 'serial_number', 'api_token', 'firmware_version', 'status', 'last_seen_at'])]
@@ -19,6 +20,16 @@ class Device extends Model
 {
     /** @use HasFactory<DeviceFactory> */
     use HasFactory;
+
+    /**
+     * Get the device's most recent reading.
+     *
+     * @return HasOne<Reading, $this>
+     */
+    public function latestReading(): HasOne
+    {
+        return $this->hasOne(Reading::class)->latestOfMany('measured_at');
+    }
 
     /**
      * Get the plant the device is monitoring.
@@ -100,6 +111,55 @@ class Device extends Model
         }
 
         return $this->sensors()->where('parameter', $parameter)->exists();
+    }
+
+    /**
+     * Get the effective threshold bounds for a parameter, including the
+     * global default when this device has not overridden it.
+     *
+     * @return array{0: float|null, 1: float|null}
+     */
+    public function thresholdsFor(ThresholdParameter $parameter): array
+    {
+        $threshold = Threshold::query()
+            ->applicableTo($this)
+            ->where('parameter', $parameter)
+            ->first();
+
+        return [
+            $threshold?->min_value !== null ? (float) $threshold->min_value : null,
+            $threshold?->max_value !== null ? (float) $threshold->max_value : null,
+        ];
+    }
+
+    /**
+     * Classify a measured value against the device's thresholds.
+     *
+     * Returns "good", "watch" or "alert" — or "offline" when there is no
+     * reading for the parameter at all.
+     */
+    public function statusOf(ThresholdParameter $parameter, float|string|null $value): string
+    {
+        if ($value === null) {
+            return 'offline';
+        }
+
+        $value = (float) $value;
+        [$min, $max] = $this->thresholdsFor($parameter);
+
+        if ($min === null || $max === null) {
+            return 'good';
+        }
+
+        if ($value > $max || $value < $min) {
+            return 'alert';
+        }
+
+        $width = ($max - $min) / 2;
+
+        return $width <= 0 || abs($value - ($min + $width)) / $width <= 0.72
+            ? 'good'
+            : 'watch';
     }
 
     /**

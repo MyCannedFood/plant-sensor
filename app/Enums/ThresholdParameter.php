@@ -19,4 +19,40 @@ enum ThresholdParameter: string
             self::Humidity => 'humidity',
         };
     }
+
+    /**
+     * Human-readable label for dashboards.
+     */
+    public function label(): string
+    {
+        return match ($this) {
+            self::Co2 => 'CO₂',
+            self::Temperature => 'Temperature',
+            self::Humidity => 'Humidity',
+        };
+    }
+
+    /**
+     * Compact label for narrow controls like segmented buttons.
+     */
+    public function short(): string
+    {
+        return match ($this) {
+            self::Co2 => 'CO₂',
+            self::Temperature => 'Temp',
+            self::Humidity => 'Humidity',
+        };
+    }
+
+    /**
+     * Unit shown next to measured values.
+     */
+    public function unit(): string
+    {
+        return match ($this) {
+            self::Co2 => 'ppm',
+            self::Temperature => '°C',
+            self::Humidity => '%',
+        };
+    }
 }

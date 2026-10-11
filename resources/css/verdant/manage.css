@@ -1,0 +1,163 @@
+/* ---------- Plant management (add / edit / delete) ---------- */
+
+.view-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+}
+
+.view-head .view-sub {
+    margin-bottom: 0;
+}
+
+.view-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.mon-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.form-panel {
+    margin-bottom: 16px;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.form-grid .t-field {
+    margin: 0;
+}
+
+.form-grid .t-field.form-wide {
+    grid-column: 1 / -1;
+}
+
+.form-grid input,
+.form-grid textarea {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    padding: 7px 9px;
+    border-radius: 7px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    width: 100%;
+}
+
+.form-grid textarea {
+    resize: vertical;
+    min-height: 54px;
+}
+
+.form-grid input:focus-visible,
+.form-grid textarea:focus-visible {
+    outline: 2px solid var(--good);
+    outline-offset: 1px;
+}
+
+.field-error {
+    display: block;
+    font-size: 11.5px;
+    color: var(--alert);
+    margin-top: 5px;
+}
+
+.delete-confirm {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+    background: var(--alert-dim);
+    border: 1px solid rgba(217, 75, 61, 0.35);
+    border-radius: var(--radius-md);
+    padding: 15px 17px;
+    margin-bottom: 16px;
+}
+
+.delete-title {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--alert);
+}
+
+.delete-copy {
+    margin: 4px 0 0;
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: var(--text-2);
+    max-width: 52ch;
+}
+
+.delete-copy b {
+    color: var(--text);
+}
+
+.delete-confirm .t-actions {
+    margin-top: 0;
+}
+
+.add-cta {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    text-align: center;
+    padding: 42px 20px;
+    border: 1.5px dashed var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--surface-2);
+    color: var(--text-2);
+}
+
+.add-cta .icon {
+    width: 20px;
+    height: 20px;
+    color: var(--good);
+}
+
+.add-cta h3 {
+    margin: 0;
+    font-size: 15px;
+    color: var(--text);
+}
+
+.add-cta p {
+    margin: 0;
+    font-size: 12.5px;
+    color: var(--text-3);
+}
+
+.notice-banner {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--good);
+    background: var(--good-dim);
+    border: 1px solid rgba(29, 158, 107, 0.3);
+    border-radius: 100px;
+    padding: 7px 14px;
+    margin-bottom: 14px;
+}
+
+.notice-banner .icon {
+    width: 14px;
+    height: 14px;
+}

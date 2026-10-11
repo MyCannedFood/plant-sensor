@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['name', 'species', 'location', 'notes'])]
+#[Fillable(['user_id', 'name', 'species', 'location', 'notes'])]
 class Plant extends Model
 {
     /** @use HasFactory<PlantFactory> */

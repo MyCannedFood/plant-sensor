@@ -15,5 +15,9 @@
     },
     "optionalDependencies": {
         "@laravel/multiplex": "^0.4.1"
+    },
+    "dependencies": {
+        "apexcharts": "^8.0.0",
+        "lucide": "^1.54.0"
     }
 }
