@@ -8,7 +8,7 @@ Proyek ini terdiri dari dua bagian terpisah:
 | `frontend/` | Dashboard Vue 3 + Vite | `http://localhost:5173` |
 
 ```
-ESP8266 / ESP32 ──POST /api/readings (X-Device-Token)──▶ Laravel API ◀──/api/* (cookie sesi Sanctum)── Vue dashboard
+Device ──POST /api/readings (X-Device-Token)──▶ Laravel API ◀──/api/* (cookie sesi Sanctum)── Vue dashboard
                                                             │
                                                           MySQL / SQLite
 ```

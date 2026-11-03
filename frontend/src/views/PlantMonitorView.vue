@@ -6,7 +6,6 @@ import { ArrowLeft, ArrowRight, Check, Pencil, Trash2 } from '@lucide/vue';
 import { plantsApi } from '@/api';
 import { errorMessage, validationErrors } from '@/api/http';
 import AlertItem from '@/components/AlertItem.vue';
-import DeviceList from '@/components/DeviceList.vue';
 import PlantForm from '@/components/PlantForm.vue';
 import StatCard from '@/components/StatCard.vue';
 import StateMessage from '@/components/StateMessage.vue';
@@ -205,8 +204,6 @@ const subtitle = computed(() => [plant.value?.location, plant.value?.species].fi
             </div>
 
             <div class="group-grid">
-                <DeviceList :devices="plant.devices" :now="now" />
-
                 <div class="panel">
                     <div class="panel-head">
                         <div>

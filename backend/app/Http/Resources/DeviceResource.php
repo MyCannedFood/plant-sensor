@@ -31,7 +31,6 @@ class DeviceResource extends JsonResource
             'sensors' => $this->sensors->map(fn (DeviceSensor $sensor) => [
                 'parameter' => $sensor->parameter->value,
                 'label' => $sensor->parameter->label(),
-                'model' => $sensor->parameter->sensorModel(),
             ])->values()->all(),
         ];
     }

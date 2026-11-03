@@ -65,14 +65,4 @@ enum ThresholdParameter: string
         return $this === self::Temperature ? 1 : 0;
     }
 
-    /**
-     * The sensor module that reports this parameter on our nodes.
-     */
-    public function sensorModel(): string
-    {
-        return match ($this) {
-            self::Co2 => 'MH-Z19C',
-            self::Temperature, self::Humidity => 'DHT22',
-        };
     }
-}
