@@ -5,8 +5,10 @@ namespace App\Http\Controllers;
 use App\Enums\ThresholdParameter;
 use App\Http\Requests\StoreReadingRequest;
 use App\Http\Resources\ReadingResource;
+use App\Models\DeviceSensor;
 use App\Models\Reading;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 
 class ReadingController extends Controller
@@ -59,6 +61,32 @@ class ReadingController extends Controller
             'message' => 'A reading at this exact instant already exists with different values.',
             'reading' => new ReadingResource($reading),
         ], 409);
+    }
+
+    /**
+     * Get the sensors declared for the authenticated device.
+     */
+    public function sensors(Request $request): JsonResponse
+    {
+        $device = $request->attributes->get('device');
+
+        $sensors = DeviceSensor::query()
+            ->where('device_id', $device->id)
+            ->get()
+            ->map(fn ($sensor) => [
+                'parameter' => $sensor->parameter->value,
+                'label' => $sensor->parameter->label(),
+                'unit' => $sensor->parameter->unit(),
+                'short' => $sensor->parameter->short(),
+                'decimals' => $sensor->parameter->decimals(),
+            ])
+            ->values();
+
+        return response()->json([
+            'device_id' => $device->id,
+            'serial_number' => $device->serial_number,
+            'sensors' => $sensors,
+        ]);
     }
 
     /**

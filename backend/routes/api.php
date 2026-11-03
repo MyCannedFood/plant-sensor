@@ -38,6 +38,11 @@ Route::post('/readings', [ReadingController::class, 'store'])
     ->middleware(['device.auth', 'throttle:device-ingest'])
     ->name('readings.store');
 
+// Device capabilities endpoint (for simulator to fetch declared sensors)
+Route::get('/device/sensors', [ReadingController::class, 'sensors'])
+    ->middleware('device.auth')
+    ->name('device.sensors');
+
 // ---------------------------------------------------------------------------
 // Dashboard (people)
 // ---------------------------------------------------------------------------

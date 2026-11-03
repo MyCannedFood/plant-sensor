@@ -1,0 +1,1 @@
+"""Plant Sensor Simulator - generates realistic sensor readings for ESP8266/ESP32 devices."""
