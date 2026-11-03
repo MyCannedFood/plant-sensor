@@ -3,7 +3,7 @@ import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/vue-query';
 import { ArrowLeft, ArrowRight, Check, Pencil, Trash2 } from '@lucide/vue';
-import { plantsApi } from '@/api';
+import { plantsApi, devicesApi } from '@/api';
 import { errorMessage, validationErrors } from '@/api/http';
 import AlertItem from '@/components/AlertItem.vue';
 import PlantForm from '@/components/PlantForm.vue';
@@ -62,6 +62,8 @@ const { data: series } = useQuery({
 
 const editing = ref(false);
 const editErrors = ref({});
+const thresholdModel = ref({});
+const plantForm = ref({ name: '', species: '', location: '', notes: '' });
 
 const update = useMutation({
     mutationFn: (payload) => plantsApi.update(props.id, payload),
@@ -75,9 +77,40 @@ const update = useMutation({
     onError: (err) => (editErrors.value = validationErrors(err)),
 });
 
+const thresholdMutation = useMutation({
+    mutationFn: (thresholds) => devicesApi.saveThresholds(plant.value.primary_device_id, thresholds),
+    onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['plant', props.id] });
+        queryClient.invalidateQueries({ queryKey: ['readings', props.id] });
+        queryClient.invalidateQueries({ queryKey: ['plants'] });
+    },
+    onError: (err) => {
+        // Could add error handling here if needed
+        console.error('Failed to save thresholds:', err);
+    },
+});
+
+async function handleSave() {
+    // Save plant details
+    update.mutate(plantForm.value);
+
+    // Save thresholds if we have a primary device and threshold data
+    if (plant.value?.primary_device_id && Object.keys(thresholdModel.value).length > 0) {
+        await thresholdMutation.mutateAsync(thresholdModel.value);
+    }
+}
+
 function startEdit() {
     editErrors.value = {};
     confirmingDelete.value = false;
+    if (plant.value) {
+        plantForm.value = {
+            name: plant.value.name ?? '',
+            species: plant.value.species ?? '',
+            location: plant.value.location ?? '',
+            notes: plant.value.notes ?? '',
+        };
+    }
     editing.value = true;
 }
 
@@ -133,14 +166,29 @@ const subtitle = computed(() => [plant.value?.location, plant.value?.species].fi
             </div>
 
             <div v-if="editing" class="panel form-panel">
-                <PlantForm
-                    :initial="plant"
-                    :errors="editErrors"
-                    :busy="update.isPending.value"
-                    submit-label="Save changes"
-                    @submit="update.mutate"
-                    @cancel="editing = false"
-                />
+                <form @submit.prevent="handleSave">
+                    <div class="form-section">
+                        <h3 class="form-section-title">Plant details</h3>
+                        <PlantForm
+                            v-model="plantForm"
+                            :errors="editErrors"
+                            :busy="update.isPending.value"
+                            @cancel="editing = false"
+                        />
+                    </div>
+                    <div v-if="plant.primary_device_id && plant.metrics.length" class="form-section">
+                        <h3 class="form-section-title">Thresholds</h3>
+                        <ThresholdForm
+                            :metrics="plant.metrics"
+                            v-model="thresholdModel"
+                        />
+                    </div>
+                    <div class="t-actions">
+                        <button type="submit" class="save-btn" :disabled="update.isPending.value || thresholdMutation.isPending.value">Save changes</button>
+                        <button type="button" class="btn-ghost" @click="editing = false">Cancel</button>
+                        <span class="save-confirm mono" :class="{ show: saved.visible.value }"><Check class="icon" /> Saved</span>
+                    </div>
+                </form>
             </div>
 
             <div v-if="confirmingDelete" class="delete-confirm">
@@ -165,46 +213,46 @@ const subtitle = computed(() => [plant.value?.location, plant.value?.species].fi
                 <StatCard v-for="item in plant.metrics" :key="item.parameter" :metric="item" />
             </div>
 
-            <div v-if="plant.metrics.length" class="panel">
-                <div class="panel-head">
-                    <div>
-                        <h3 class="panel-title">Trend</h3>
-                        <p class="panel-sub">Measurement history with threshold band</p>
-                    </div>
-                    <div class="panel-controls">
-                        <div class="segmented" role="group" aria-label="Metric">
-                            <button
-                                v-for="item in plant.metrics"
-                                :key="item.parameter"
-                                type="button"
-                                :class="{ active: metric === item.parameter }"
-                                :aria-pressed="metric === item.parameter"
-                                @click="metric = item.parameter"
-                            >{{ item.short }}</button>
+            <div v-if="plant.metrics.length" class="charts-grid">
+                <div class="panel chart-panel">
+                    <div class="panel-head">
+                        <div>
+                            <h3 class="panel-title">Trend</h3>
+                            <p class="panel-sub">Measurement history with threshold band</p>
                         </div>
-                        <div class="segmented" role="group" aria-label="Range">
-                            <button
-                                v-for="(text, value) in RANGES"
-                                :key="value"
-                                type="button"
-                                :class="{ active: range === value }"
-                                :aria-pressed="range === value"
-                                @click="range = value"
-                            >{{ text }}</button>
+                        <div class="panel-controls">
+                            <div class="segmented" role="group" aria-label="Metric">
+                                <button
+                                    v-for="item in plant.metrics"
+                                    :key="item.parameter"
+                                    type="button"
+                                    :class="{ active: metric === item.parameter }"
+                                    :aria-pressed="metric === item.parameter"
+                                    @click="metric = item.parameter"
+                                >{{ item.short }}</button>
+                            </div>
+                            <div class="segmented" role="group" aria-label="Range">
+                                <button
+                                    v-for="(text, value) in RANGES"
+                                    :key="value"
+                                    type="button"
+                                    :class="{ active: range === value }"
+                                    :aria-pressed="range === value"
+                                    @click="range = value"
+                                >{{ text }}</button>
+                            </div>
                         </div>
                     </div>
+                    <TrendChart
+                        :points="series?.points ?? []"
+                        :threshold="series?.threshold"
+                        :label="series?.label ?? ''"
+                        :unit="series?.unit ?? ''"
+                        :decimals="series?.decimals ?? 0"
+                    />
                 </div>
-                <TrendChart
-                    :points="series?.points ?? []"
-                    :threshold="series?.threshold"
-                    :label="series?.label ?? ''"
-                    :unit="series?.unit ?? ''"
-                    :decimals="series?.decimals ?? 0"
-                />
-            </div>
 
-            <div class="group-grid">
-                <div class="panel">
+                <div class="panel alert-panel">
                     <div class="panel-head">
                         <div>
                             <h3 class="panel-title">Recent alerts</h3>
@@ -218,13 +266,6 @@ const subtitle = computed(() => [plant.value?.location, plant.value?.species].fi
                     <p v-if="!plant.recent_alerts.length" class="empty-note">No recent events. All clear.</p>
                 </div>
             </div>
-
-            <ThresholdForm
-                v-if="plant.primary_device_id && plant.metrics.length"
-                :plant-id="plant.id"
-                :device-id="plant.primary_device_id"
-                :metrics="plant.metrics"
-            />
         </template>
     </div>
 </template>

@@ -7,6 +7,11 @@ enum ThresholdParameter: string
     case Co2 = 'co2';
     case Temperature = 'temperature';
     case Humidity = 'humidity';
+    case Ph = 'ph';
+    case Ec = 'ec';
+    case WaterTemperature = 'water_temperature';
+    case Light = 'light';
+    case WaterLevel = 'water_level';
 
     /**
      * Get the reading column that this parameter is measured from.
@@ -17,6 +22,11 @@ enum ThresholdParameter: string
             self::Co2 => 'co2',
             self::Temperature => 'temperature',
             self::Humidity => 'humidity',
+            self::Ph => 'ph',
+            self::Ec => 'ec',
+            self::WaterTemperature => 'water_temperature',
+            self::Light => 'light',
+            self::WaterLevel => 'water_level',
         };
     }
 
@@ -29,6 +39,11 @@ enum ThresholdParameter: string
             self::Co2 => 'CO₂',
             self::Temperature => 'Temperature',
             self::Humidity => 'Humidity',
+            self::Ph => 'pH',
+            self::Ec => 'EC',
+            self::WaterTemperature => 'Water Temp',
+            self::Light => 'Light',
+            self::WaterLevel => 'Water Level',
         };
     }
 
@@ -41,6 +56,11 @@ enum ThresholdParameter: string
             self::Co2 => 'CO₂',
             self::Temperature => 'Temp',
             self::Humidity => 'Humidity',
+            self::Ph => 'pH',
+            self::Ec => 'EC',
+            self::WaterTemperature => 'Water T',
+            self::Light => 'Light',
+            self::WaterLevel => 'Level',
         };
     }
 
@@ -53,16 +73,25 @@ enum ThresholdParameter: string
             self::Co2 => 'ppm',
             self::Temperature => '°C',
             self::Humidity => '%',
+            self::Ph => '',
+            self::Ec => 'µS/cm',
+            self::WaterTemperature => '°C',
+            self::Light => 'lux',
+            self::WaterLevel => '%',
         };
     }
 
     /**
-     * Decimal places shown on the dashboard. CO₂ and humidity are read as
-     * whole numbers in practice; temperature is meaningful to a tenth.
+     * Decimal places shown on the dashboard.
      */
     public function decimals(): int
     {
-        return $this === self::Temperature ? 1 : 0;
+        return match ($this) {
+            self::Temperature, self::WaterTemperature, self::Ph => 1,
+            self::Ec => 0,
+            self::Light => 0,
+            self::WaterLevel => 0,
+            default => 0,
+        };
     }
-
-    }
+}

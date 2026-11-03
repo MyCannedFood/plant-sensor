@@ -23,6 +23,7 @@ const { data: plants, error, isPending, refetch } = useQuery({
 
 const showForm = ref(false);
 const errors = ref({});
+const plantForm = ref({ name: '', species: '', location: '', notes: '' });
 
 const create = useMutation({
     mutationFn: plantsApi.create,
@@ -31,12 +32,15 @@ const create = useMutation({
         showForm.value = false;
         saved.show();
         queryClient.invalidateQueries({ queryKey: ['plants'] });
+        // Reset form after successful creation
+        plantForm.value = { name: '', species: '', location: '', notes: '' };
     },
     onError: (err) => (errors.value = validationErrors(err)),
 });
 
 function openForm() {
     errors.value = {};
+    plantForm.value = { name: '', species: '', location: '', notes: '' };
     showForm.value = true;
 }
 </script>
@@ -63,7 +67,13 @@ function openForm() {
                     <p class="panel-sub">Register a room so a device can start reporting on it.</p>
                 </div>
             </div>
-            <PlantForm :errors="errors" :busy="create.isPending.value" @submit="create.mutate" @cancel="showForm = false" />
+            <form @submit.prevent="create.mutate(plantForm)">
+                <PlantForm v-model="plantForm" :errors="errors" :busy="create.isPending.value" @cancel="showForm = false" />
+                <div class="t-actions">
+                    <button type="submit" class="save-btn" :disabled="create.isPending.value">Save plant</button>
+                    <button type="button" class="btn-ghost" @click="showForm = false">Cancel</button>
+                </div>
+            </form>
         </div>
 
         <StateMessage v-if="isPending || error" :error="error" @retry="refetch" />

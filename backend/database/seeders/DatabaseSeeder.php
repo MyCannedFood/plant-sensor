@@ -52,6 +52,11 @@ class DatabaseSeeder extends Seeder
         'co2' => [400, 1200],
         'temperature' => [16, 30],
         'humidity' => [35, 75],
+        'ph' => [5.5, 7.0],
+        'ec' => [800, 2000],
+        'water_temperature' => [18, 28],
+        'light' => [500, 50000],
+        'water_level' => [30, 90],
     ];
 
     /**
@@ -82,8 +87,8 @@ class DatabaseSeeder extends Seeder
             'species' => 'Monstera deliciosa',
             'location' => 'Living Room',
             'notes' => 'Leaves started curling, check humidity twice a week.',
-            'conditions' => ['co2' => 780, 'temperature' => 24.5, 'humidity' => 76],
-            'thresholds' => ['humidity' => [60, 90]],
+            'conditions' => ['co2' => 780, 'temperature' => 24.5, 'humidity' => 76, 'ph' => 6.2, 'ec' => 1200, 'water_temperature' => 23, 'light' => 15000, 'water_level' => 65],
+            'thresholds' => ['humidity' => [60, 90], 'ph' => [5.5, 6.8], 'light' => [10000, 30000]],
         ],
         [
             'label' => 'Cactus',
@@ -91,8 +96,8 @@ class DatabaseSeeder extends Seeder
             'species' => 'Euphorbia trigona',
             'location' => 'Kitchen',
             'notes' => 'Water once a month in winter, never let it sit in water.',
-            'conditions' => ['co2' => 640, 'temperature' => 29, 'humidity' => 32],
-            'thresholds' => ['temperature' => [20, 35], 'humidity' => [20, 45]],
+            'conditions' => ['co2' => 640, 'temperature' => 29, 'humidity' => 32, 'ph' => 7.0, 'ec' => 800, 'water_temperature' => 25, 'light' => 50000, 'water_level' => 20],
+            'thresholds' => ['temperature' => [20, 35], 'humidity' => [20, 45], 'water_level' => [10, 40]],
         ],
         [
             'label' => 'Fiddle Leaf Fig',
@@ -100,8 +105,8 @@ class DatabaseSeeder extends Seeder
             'species' => 'Ficus lyrata',
             'location' => 'Study',
             'notes' => 'Hates being moved. Rotate a quarter turn each month.',
-            'conditions' => ['co2' => 720, 'temperature' => 23, 'humidity' => 61],
-            'thresholds' => ['co2' => [400, 1100], 'humidity' => [50, 75]],
+            'conditions' => ['co2' => 720, 'temperature' => 23, 'humidity' => 61, 'ph' => 6.5, 'ec' => 1000, 'water_temperature' => 22, 'light' => 20000, 'water_level' => 55],
+            'thresholds' => ['co2' => [400, 1100], 'humidity' => [50, 75], 'light' => [15000, 40000]],
         ],
         [
             'label' => 'Calathea',
@@ -109,8 +114,8 @@ class DatabaseSeeder extends Seeder
             'species' => 'Calathea orbifolia',
             'location' => 'Bedroom',
             'notes' => 'Brown edges usually mean dry air, not thirst.',
-            'conditions' => ['co2' => 690, 'temperature' => 22, 'humidity' => 68],
-            'thresholds' => ['humidity' => [60, 80]],
+            'conditions' => ['co2' => 690, 'temperature' => 22, 'humidity' => 68, 'ph' => 6.0, 'ec' => 900, 'water_temperature' => 21, 'light' => 8000, 'water_level' => 70],
+            'thresholds' => ['humidity' => [60, 80], 'ph' => [5.5, 6.5]],
         ],
         [
             'label' => 'Boston Fern',
@@ -118,8 +123,8 @@ class DatabaseSeeder extends Seeder
             'species' => 'Nephrolepis exaltata',
             'location' => 'Bathroom',
             'notes' => 'Mist daily while the heating is on.',
-            'conditions' => ['co2' => 810, 'temperature' => 21, 'humidity' => 81],
-            'thresholds' => ['humidity' => [70, 95]],
+            'conditions' => ['co2' => 810, 'temperature' => 21, 'humidity' => 81, 'ph' => 5.8, 'ec' => 1100, 'water_temperature' => 20, 'light' => 5000, 'water_level' => 85],
+            'thresholds' => ['humidity' => [70, 95], 'water_level' => [60, 95]],
         ],
     ];
 
@@ -133,11 +138,11 @@ class DatabaseSeeder extends Seeder
      * @var array<string, list<ThresholdParameter>>
      */
     private const DEVICE_SENSORS = [
-        'Monstera' => [ThresholdParameter::Co2, ThresholdParameter::Temperature, ThresholdParameter::Humidity],
-        'Cactus' => [ThresholdParameter::Temperature, ThresholdParameter::Humidity],
-        'Fiddle Leaf Fig' => [ThresholdParameter::Temperature, ThresholdParameter::Humidity],
-        'Calathea' => [ThresholdParameter::Co2],
-        'Boston Fern' => [ThresholdParameter::Co2, ThresholdParameter::Temperature, ThresholdParameter::Humidity],
+        'Monstera' => [ThresholdParameter::Co2, ThresholdParameter::Temperature, ThresholdParameter::Humidity, ThresholdParameter::Ph, ThresholdParameter::Ec, ThresholdParameter::Light],
+        'Cactus' => [ThresholdParameter::Temperature, ThresholdParameter::Humidity, ThresholdParameter::WaterLevel, ThresholdParameter::Light],
+        'Fiddle Leaf Fig' => [ThresholdParameter::Temperature, ThresholdParameter::Humidity, ThresholdParameter::Ph, ThresholdParameter::Light],
+        'Calathea' => [ThresholdParameter::Co2, ThresholdParameter::Ph, ThresholdParameter::WaterLevel],
+        'Boston Fern' => [ThresholdParameter::Co2, ThresholdParameter::Temperature, ThresholdParameter::Humidity, ThresholdParameter::WaterTemperature, ThresholdParameter::WaterLevel],
     ];
 
     /**
@@ -279,7 +284,7 @@ class DatabaseSeeder extends Seeder
     /**
      * Seed a week of readings that drift around the conditions a plant likes.
      *
-     * @param  array{co2: float, temperature: float, humidity: float}  $conditions
+     * @param  array<string, float>  $conditions
      * @param  list<ThresholdParameter>  $parameters
      */
     private function seedReadings(Device $device, array $conditions, array $parameters): void
@@ -306,6 +311,21 @@ class DatabaseSeeder extends Seeder
                     'humidity' => in_array(ThresholdParameter::Humidity, $parameters, true)
                         ? (int) round($conditions['humidity'] + fake()->numberBetween(-5, 5))
                         : null,
+                    'ph' => in_array(ThresholdParameter::Ph, $parameters, true)
+                        ? round($conditions['ph'] + fake()->randomFloat(2, -0.3, 0.3), 1)
+                        : null,
+                    'ec' => in_array(ThresholdParameter::Ec, $parameters, true)
+                        ? (int) round($conditions['ec'] + fake()->numberBetween(-100, 100))
+                        : null,
+                    'water_temperature' => in_array(ThresholdParameter::WaterTemperature, $parameters, true)
+                        ? round($conditions['water_temperature'] + fake()->randomFloat(2, -1.0, 1.0), 2)
+                        : null,
+                    'light' => in_array(ThresholdParameter::Light, $parameters, true)
+                        ? (int) round($conditions['light'] + fake()->numberBetween(-2000, 2000))
+                        : null,
+                    'water_level' => in_array(ThresholdParameter::WaterLevel, $parameters, true)
+                        ? (int) round($conditions['water_level'] + fake()->numberBetween(-5, 5))
+                        : null,
                 ];
             })
             ->create();
@@ -314,7 +334,7 @@ class DatabaseSeeder extends Seeder
     /**
      * Seed out-of-range readings together with the alerts they explain.
      *
-     * @param  array<int, array{device: Device, conditions: array{co2: float, temperature: float, humidity: float}, parameters: list<ThresholdParameter>}>  $devices
+     * @param  array<int, array{device: Device, conditions: array<string, float>, parameters: list<ThresholdParameter>}>  $devices
      */
     private function seedIncidents(array $devices): void
     {
@@ -356,6 +376,11 @@ class DatabaseSeeder extends Seeder
                 'co2' => $field(ThresholdParameter::Co2),
                 'temperature' => $field(ThresholdParameter::Temperature),
                 'humidity' => $field(ThresholdParameter::Humidity),
+                'ph' => $field(ThresholdParameter::Ph),
+                'ec' => $field(ThresholdParameter::Ec),
+                'water_temperature' => $field(ThresholdParameter::WaterTemperature),
+                'light' => $field(ThresholdParameter::Light),
+                'water_level' => $field(ThresholdParameter::WaterLevel),
             ]);
 
             Alert::query()->create([

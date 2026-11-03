@@ -39,6 +39,11 @@ class ReadingController extends Controller
                 'co2' => $validated['co2'] ?? null,
                 'temperature' => $validated['temperature'] ?? null,
                 'humidity' => $validated['humidity'] ?? null,
+                'ph' => $validated['ph'] ?? null,
+                'ec' => $validated['ec'] ?? null,
+                'water_temperature' => $validated['water_temperature'] ?? null,
+                'light' => $validated['light'] ?? null,
+                'water_level' => $validated['water_level'] ?? null,
             ],
         );
 

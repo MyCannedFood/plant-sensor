@@ -38,6 +38,11 @@ class StoreReadingRequest extends FormRequest
             'co2' => ['nullable', 'integer', 'between:0,10000'],
             'temperature' => ['nullable', 'numeric', 'between:-40,80'],
             'humidity' => ['nullable', 'numeric', 'decimal:0,2', 'between:0,100'],
+            'ph' => ['nullable', 'numeric', 'decimal:0,1', 'between:0,14'],
+            'ec' => ['nullable', 'integer', 'between:0,10000'],
+            'water_temperature' => ['nullable', 'numeric', 'decimal:0,2', 'between:-40,80'],
+            'light' => ['nullable', 'integer', 'between:0,200000'],
+            'water_level' => ['nullable', 'integer', 'between:0,100'],
             'measured_at' => ['required', 'date', 'before_or_equal:now+5 minutes'],
         ];
     }

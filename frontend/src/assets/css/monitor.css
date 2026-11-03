@@ -187,8 +187,15 @@
     gap: 14px;
 }
 
+.charts-grid {
+    display: grid;
+    grid-template-columns: 70% 30%;
+    gap: 14px;
+}
+
 @media (max-width: 760px) {
     .group-grid { grid-template-columns: 1fr; }
+    .charts-grid { grid-template-columns: 1fr; }
 }
 
 /* device status */

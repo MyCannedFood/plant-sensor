@@ -6,37 +6,43 @@ import { reactive, watch } from 'vue';
  * "Edit plant" on the monitor page.
  */
 const props = defineProps({
-    initial: {
-        type: Object,
-        default: () => ({ name: '', species: '', location: '', notes: '' }),
-    },
+    modelValue: { type: Object, default: () => ({ name: '', species: '', location: '', notes: '' }) },
     errors: { type: Object, default: () => ({}) },
     submitLabel: { type: String, default: 'Save plant' },
     busy: { type: Boolean, default: false },
 });
 
-const emit = defineEmits(['submit', 'cancel']);
+const emit = defineEmits(['update:modelValue', 'cancel']);
 
-const form = reactive({ name: '', species: '', location: '', notes: '' });
+const form = reactive({
+    name: '',
+    species: '',
+    location: '',
+    notes: '',
+});
 
 watch(
-    () => props.initial,
-    (initial) => {
-        form.name = initial.name ?? '';
-        form.species = initial.species ?? '';
-        form.location = initial.location ?? '';
-        form.notes = initial.notes ?? '';
+    () => props.modelValue,
+    (modelValue) => {
+        form.name = modelValue.name ?? '';
+        form.species = modelValue.species ?? '';
+        form.location = modelValue.location ?? '';
+        form.notes = modelValue.notes ?? '';
     },
     { immediate: true },
 );
 
-function submit() {
-    emit('submit', { ...form });
-}
+watch(
+    form,
+    (val) => {
+        emit('update:modelValue', val);
+    },
+    { deep: true },
+);
 </script>
 
 <template>
-    <form class="form-grid-wrap" @submit.prevent="submit">
+    <div class="form-grid-wrap">
         <div class="form-grid">
             <label class="t-field">
                 <h4>Name</h4>
@@ -59,10 +65,5 @@ function submit() {
                 <span v-if="errors.notes" class="field-error">{{ errors.notes }}</span>
             </label>
         </div>
-        <div class="t-actions">
-            <button type="submit" class="save-btn" :disabled="busy">{{ submitLabel }}</button>
-            <button type="button" class="btn-ghost" @click="emit('cancel')">Cancel</button>
-            <slot name="actions" />
-        </div>
-    </form>
+    </div>
 </template>
