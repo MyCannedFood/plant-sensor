@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[\Illuminate\Database\Eloquent\Attributes\Fillable(['name', 'email', 'password'])]
+#[\Illuminate\Database\Eloquent\Attributes\Fillable(['name', 'email', 'password', 'google_id', 'avatar'])]
 #[\Illuminate\Database\Eloquent\Attributes\Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {

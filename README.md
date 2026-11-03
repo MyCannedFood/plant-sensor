@@ -4,7 +4,7 @@ Proyek ini terdiri dari dua bagian terpisah:
 
 | Folder | Isi | Jalan di |
 |---|---|---|
-| `plant-sensor/` | Backend Laravel 13: API untuk perangkat ESP dan untuk dashboard | `http://localhost:8000` |
+| `backend/` | Backend Laravel 13: API untuk perangkat ESP dan untuk dashboard | `http://localhost:8000` |
 | `frontend/` | Dashboard Vue 3 + Vite | `http://localhost:5173` |
 
 ```
