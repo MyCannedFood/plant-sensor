@@ -13,41 +13,58 @@ ESP8266 / ESP32 ──POST /api/readings (X-Device-Token)──▶ Laravel API �
                                                           MySQL / SQLite
 ```
 
+## Autentikasi & Otorisasi (Selesai)
+
+| Tipe | Metode | Detail |
+|---|---|---|
+| **User (Dashboard)** | Email/password + Google OAuth | Sanctum SPA (cookie HttpOnly + CSRF) |
+| **Device (ESP)** | API Token (`X-Device-Token` header) | Stateless, SHA-256 hash di DB, 30 req/menit |
+
+**User**: Hanya bisa akses tanaman miliknya sendiri (404 untuk milik orang lain).  
+**Device**: Hanya bisa kirim reading untuk device-nya sendiri (token = identitas).
+
 ## Menjalankan pertama kali
 
 ### 1. Backend
 
 ```bash
-cd plant-sensor
+cd backend
 
-# Urutannya penting: pasang Sanctum DULU. config/sanctum.php memakai class
-# Sanctum, jadi perintah composer apa pun gagal selama Sanctum belum terpasang.
-composer require laravel/sanctum
-composer remove livewire/livewire
-
-cp .env.example .env        # lewati kalau .env sudah ada (lihat catatan di bawah)
+cp .env.example .env        # lewati kalau .env sudah ada
 php artisan key:generate    # hanya kalau .env baru
-php artisan migrate:fresh --seed
+
+# Konfigurasi Google OAuth (opsional, untuk login Google)
+# Isi GOOGLE_CLIENT_ID & GOOGLE_CLIENT_SECRET di .env
+# Redirect URI sudah di set di config/service.php. 
+# Jika masih tidak bisa, tambah Redirect URI={APP_URL}/api/auth/google/callback di .env
+
+php artisan migrate --seed
 php artisan serve
 ```
 
-Kalau Anda memakai `.env` lama, pastikan dua baris ini ada (sudah ditambahkan di `.env` dan `.env.example`):
+`migrate --seed` membuat tabel + data demo:
+- 2 akun (password: `password`)
+- 5 tanaman dengan 7 hari data
+- Token perangkat di `storage/app/private/device-tokens.json`
 
-```
-FRONTEND_URL=http://localhost:5173
-SANCTUM_STATEFUL_DOMAINS=localhost:5173,127.0.0.1:5173,localhost,127.0.0.1,127.0.0.1:8000
-```
+**Akun demo:**
+- `test@example.com` — Monstera, Cactus, Fiddle Leaf Fig
+- `second@example.com` — Calathea, Boston Fern
 
-`migrate:fresh` menghapus semua tabel lalu membuatnya ulang. Kalau database Anda sudah berisi
-data yang ingin disimpan, pakai `php artisan migrate` saja (hanya menambah tabel `personal_access_tokens`).
+> **Catatan**: Sanctum & Socialite sudah terpasang. Tidak perlu `composer require` lagi.
+- lakukan `composer require sacntum && composer require Socialite` jika belum ada 
 
-Seeder membuat dua akun (password keduanya `password`), lima tanaman dengan data tujuh hari,
-dan menulis token perangkat ke `storage/app/private/device-tokens.json`:
+#### Troubleshooting Backend
 
-- `test@example.com` memiliki Monstera, Cactus, dan Fiddle Leaf Fig.
-- `second@example.com` memiliki Calathea dan Boston Fern.
-
-Panduan demo autentikasi dan otorisasi ada di [`demo/README.md`](demo/README.md).
+| Masalah | Solusi |
+|---|---|
+| `Class "Laravel\Sanctum\SanctumServiceProvider" not found` | `composer install` (vendor hilang) |
+| `No application encryption key has been specified` | `php artisan key:generate` |
+| Migration gagal: `SQLSTATE[HY000]: General error: 1 no such table` | `php artisan migrate:fresh --seed` (reset DB) |
+| Google OAuth: `Error 400: redirect_uri_mismatch` | Pastikan `GOOGLE_REDIRECT_URI` di `.env` sama persis di Google Cloud Console (termasuk trailing slash) |
+| Google OAuth: `invalid_client` | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` salah atau project Google Cloud tidak aktif |
+| `SESSON_DOMAIN` error di production | Set `SESSION_DOMAIN=.domain.com` dan `SESSION_SECURE_COOKIE=true` |
+| Cookie tidak terkirim (Safari/Incognito) | Pastikan `SESSION_SECURE_COOKIE=true` di HTTPS, `SANCTUM_STATEFUL_DOMAINS` benar |
 
 ### 2. Frontend
 
@@ -58,15 +75,18 @@ npm install
 npm run dev
 ```
 
-Buka `http://localhost:5173`, lalu login dengan akun di atas.
+Buka `http://localhost:5173`, login dengan akun di atas **atau** klik "Continue with Google".
 
-Kalau login gagal dengan **502**, berarti Vite tidak bisa menghubungi Laravel. Pastikan
-`php artisan serve` berjalan di terminal lain, dan `VITE_BACKEND_URL` di `frontend/.env` memakai
-`http://127.0.0.1:8000`, bukan `localhost`. Di Windows, Node menerjemahkan `localhost` ke IPv6,
-sedangkan `php artisan serve` hanya mendengarkan IPv4. Setelah mengubah `.env`, jalankan ulang `npm run dev`.
+#### Troubleshooting Frontend
 
-Saat development, Vite meneruskan `/api` dan `/sanctum` ke Laravel (`VITE_BACKEND_URL`),
-jadi browser hanya berbicara dengan satu origin dan tidak perlu pengaturan CORS.
+| Masalah | Solusi |
+|---|---|
+| Login 502 / "Cannot reach server" | `VITE_BACKEND_URL=http://127.0.0.1:8000` (bukan `localhost`), restart `npm run dev` |
+| CSRF token mismatch / 419 | Hapus cookie `XSRF-TOKEN` & `laravel_session`, reload halaman |
+| "Continue with Google" redirect ke halaman putih | `GOOGLE_CLIENT_ID` belum di-set di backend `.env` |
+| Logout lalu login lagi gagal | Hard refresh (Ctrl+Shift+R) — cache service worker |
+| Hot reload tidak jalan | `npm run dev -- --force` atau cek port 5173 tidak dipakai lain |
+| TypeScript error di `import.meta.env` | Restart TS server di VS Code (Cmd+Shift+P → "TypeScript: Restart TS Server") |
 
 ### 3. Menjalankan test backend
 
@@ -77,6 +97,14 @@ php artisan test
 
 Tiga test di `ReadingSchemaGuardTest` mencocokkan pesan error khas MySQL
 (`Duplicate entry`, `cannot be null`), sehingga hanya lulus kalau test dijalankan dengan MySQL.
+
+#### Troubleshooting Test
+
+| Masalah | Solusi |
+|---|---|
+| Test gagal: `SQLSTATE[HY000] [2002] Connection refused` | `DB_CONNECTION=sqlite` di `.env.testing` atau jalankan MySQL |
+| Test `ReadingSchemaGuardTest` gagal di SQLite | Normal — test itu butuh MySQL. Skip: `php artisan test --exclude-group=mysql` |
+| `refreshDatabase` lambat | Pakai SQLite in-memory: `DB_CONNECTION=sqlite` `DB_DATABASE=:memory:` |
 
 ## Endpoint API
 
