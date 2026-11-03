@@ -2,16 +2,19 @@
 
 namespace App\Http\Controllers\Dashboard;
 
+use App\Enums\DeviceStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\PlantRequest;
 use App\Http\Resources\PlantResource;
 use App\Http\Resources\PlantSummaryResource;
+use App\Models\Device;
 use App\Models\Plant;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Str;
 
 class PlantController extends Controller
 {
@@ -33,7 +36,26 @@ class PlantController extends Controller
     {
         $plant = $request->user()->plants()->create($request->validated());
 
+        $deviceToken = null;
+
+        if ($request->filled('device_token')) {
+            $token = $request->input('device_token');
+
+            // Find device by token (sha256 lookup)
+            $device = Device::where('api_token', hash('sha256', $token))
+                ->unassigned()
+                ->firstOrFail();
+
+            // Link device to plant
+            $device->plant_id = $plant->id;
+            $device->save();
+
+            // Generate new token for the device (rotation)
+            $deviceToken = $device->generateToken();
+        }
+
         return (new PlantResource($plant->load($this->monitorRelations())))
+            ->additional(['device_token' => $deviceToken])
             ->response()
             ->setStatusCode(201);
     }

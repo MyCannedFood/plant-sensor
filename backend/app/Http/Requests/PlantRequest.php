@@ -27,6 +27,7 @@ class PlantRequest extends FormRequest
             'species' => ['nullable', 'string', 'max:120'],
             'location' => ['nullable', 'string', 'max:80'],
             'notes' => ['nullable', 'string', 'max:1000'],
+            'device_token' => ['nullable', 'string', 'size:40'],
         ];
     }
 

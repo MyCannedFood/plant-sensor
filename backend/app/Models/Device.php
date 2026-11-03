@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
 
 #[Fillable(['name', 'serial_number', 'api_token', 'firmware_version', 'status', 'last_seen_at'])]
@@ -37,6 +38,22 @@ class Device extends Model
     public function plant(): BelongsTo
     {
         return $this->belongsTo(Plant::class);
+    }
+
+    /**
+     * Get the user who owns this device.
+     */
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Scope a query to only include unassigned devices.
+     */
+    public function scopeUnassigned(Builder $query): void
+    {
+        $query->whereNull('plant_id');
     }
 
     /**

@@ -6,7 +6,7 @@ import { reactive, watch } from 'vue';
  * "Edit plant" on the monitor page.
  */
 const props = defineProps({
-    modelValue: { type: Object, default: () => ({ name: '', species: '', location: '', notes: '' }) },
+    modelValue: { type: Object, default: () => ({ name: '', species: '', location: '', notes: '', device_token: '' }) },
     errors: { type: Object, default: () => ({}) },
     submitLabel: { type: String, default: 'Save plant' },
     busy: { type: Boolean, default: false },
@@ -19,6 +19,7 @@ const form = reactive({
     species: '',
     location: '',
     notes: '',
+    device_token: '',
 });
 
 watch(
@@ -28,6 +29,7 @@ watch(
         form.species = modelValue.species ?? '';
         form.location = modelValue.location ?? '';
         form.notes = modelValue.notes ?? '';
+        form.device_token = modelValue.device_token ?? '';
     },
     { immediate: true },
 );
@@ -63,6 +65,11 @@ watch(
                 <h4>Notes</h4>
                 <textarea v-model="form.notes" rows="3" maxlength="1000" placeholder="Care tips, anything to remember…"></textarea>
                 <span v-if="errors.notes" class="field-error">{{ errors.notes }}</span>
+            </label>
+            <label class="t-field form-wide">
+                <h4>Device Token</h4>
+                <input v-model="form.device_token" type="text" maxlength="40" placeholder="Paste device token to link a pre-provisioned device">
+                <span v-if="errors.device_token" class="field-error">{{ errors.device_token }}</span>
             </label>
         </div>
     </div>

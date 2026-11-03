@@ -176,18 +176,13 @@ class DatabaseSeeder extends Seeder
         $devices = [];
         $tokens = [];
 
+        // Create the demo plants with their devices (backward compatible)
         foreach (self::PLANTS as $index => $definition) {
             $plant = Plant::query()->firstOrCreate(
                 ['user_id' => $users[$definition['owner']]->id, 'name' => $definition['label']],
                 ['species' => $definition['species'], 'location' => $definition['location'], 'notes' => $definition['notes']],
             );
 
-            // Hash at rest: the database stores sha256(token), never the
-            // plaintext. generateToken() returns the 40-character secret
-            // exactly once; this run keeps it for the local token file the
-            // simulator reads, so the plaintext never sits in the database.
-            // The api_token value here is only a NOT NULL placeholder for the
-            // first insert; generateToken() replaces it with a real hash.
             $device = Device::query()->firstOrCreate(
                 ['plant_id' => $plant->id],
                 ['name' => "{$definition['label']} Sensor", 'serial_number' => strtoupper(Str::random(12)), 'api_token' => hash('sha256', Str::random(40))],
