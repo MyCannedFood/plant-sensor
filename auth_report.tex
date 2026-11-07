@@ -1,0 +1,399 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{listings}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{multicol}
+
+\definecolor{verdark}{HTML}{1B5E20}
+\definecolor{verlight}{HTML}{E8F5E9}
+\definecolor{codebg}{HTML}{F5F5F5}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=verdark,
+    filecolor=verdark,
+    urlcolor=verdark,
+    citecolor=verdark,
+}
+
+\lstset{
+    language=PHP,
+    basicstyle=\small\ttfamily,
+    backgroundcolor=\color{codebg},
+    frame=single,
+    framerule=0.5pt,
+    rulecolor=\color{gray},
+    breaklines=true,
+    tabsize=4,
+}
+
+\titleformat{\section}{\Large\bfseries\color{verdark}}{\thesection}{1em}{}
+\titleformat{\subsection}{\large\bfseries\color{verdark}}{\thesubsection}{1em}{}
+\titleformat{\subsubsection}{\normalsize\bfseries\color{verdark}}{\thesubsubsection}{1em}{}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small Verdant --- Authentication \& Authorization Report}
+\fancyhead[R]{\small Page \thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+\begin{document}
+
+\begin{center}
+{\huge\bfseries\color{verdark} Authentication and Authorization Report}\\[0.5em]
+{\large Verdant --- IoT Environmental Monitoring System}\\[0.5em]
+\textbf{Laravel 13 Backend + Vue 3 Dashboard + ESP Sensor Nodes}\\[1em]
+\begin{tabular}{ll}
+\textbf{Name} & \textbf{Student ID} \\
+Raffael Valentino Gunawan & 00000091170 \\
+Muhammad Sagara Waluya & 00000101478 \\
+\end{tabular}
+\end{center}
+
+\vspace{1em}
+
+\section*{Demonstration Video}
+A video walkthrough demonstrating the authentication and authorization system in action is available at:\\
+\url{https://youtu.be/LLTRRBKQZA4}
+
+\vspace{0.5em}
+
+\section{Introduction}
+
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{User authentication} using email/password and Google OAuth via \textbf{Laravel Sanctum} SPA session authentication.
+    \item \textbf{Device authentication} using a stateless API token sent in the \texttt{X-Device-Token} HTTP header.
+\end{enumerate}User authenticatio
+
+\section{Entities Being Authenticated}
+
+The system authenticates two distinct classes of entities:
+
+\subsection{Users}
+
+The \texttt{User} model (\texttt{app/Models/User.php}) extends Laravel's \texttt{Authenticatable} and stores:
+\begin{itemize}
+    \item \texttt{name}, \texttt{email}, \texttt{password} (hashed via bcrypt)
+    \item \texttt{google\_id} (for Google OAuth linking)
+    \item \texttt{avatar} (OAuth profile picture URL)
+    \item \texttt{email\_verified\_at}
+\end{itemize}
+
+Users own plants. Each plant record has a \texttt{user\_id} foreign key, and authorization is scoped to plant ownership (see Section~\ref{sec:authorization}).
+
+\subsection{Devices}
+
+The \texttt{Device} model (\texttt{app/Models/Device.php}) stores:
+\begin{itemize}
+    \item \texttt{name}, \texttt{serial\_number}
+    \item \texttt{api\_token} --- the SHA\texttt{-}256 hash of the device's plaintext API token
+    \item \texttt{firmware\_version}
+    \item \texttt{status} --- an enum: \texttt{active}, \texttt{inactive}, or \texttt{maintenance}
+    \item \texttt{last\_seen\_at} --- updated on every authenticated reading ingest
+\end{itemize}
+
+Devices belong to a user (via \texttt{user\_id}) and may be assigned to a plant (via \texttt{plant\_id}).
+
+\section{Authentication}
+
+\subsection{User Authentication: Laravel Sanctum SPA}
+
+Users authenticate to the Vue dashboard through \textbf{Laravel Sanctum}. Sanctum is Laravel's official package for single-page application (SPA) authentication. Instead of issuing bearer tokens stored in \texttt{localStorage}, Sanctum issues \textbf{HttpOnly session cookies} that are automatically sent by the browser with every request to the same origin.
+
+\subsubsection{Inner workings}
+
+The authentication flow is:
+
+\begin{enumerate}[leftmargin=*]
+    \item The frontend calls \texttt{GET /sanctum/csrf-cookie}. Laravel sets two cookies:
+          \begin{itemize}
+              \item \texttt{laravel\_session} (HttpOnly) --- the session identifier
+              \item \texttt{XSRF-TOKEN} --- a CSRF token readable by JavaScript
+          \end{itemize}
+    \item The frontend posts the user's email and password to \texttt{POST /api/login}.
+    \item Laravel verifies the credentials against the \texttt{users} table using the \texttt{web} guard (session driver, Eloquent provider).
+    \item On success, Laravel calls \texttt{\$request->session()->regenerate()} to prevent session fixation, then issues the session cookie.
+    \item Every subsequent API request from the same origin automatically includes the session cookie. Sanctum's \texttt{auth:sanctum} guard validates the session and resolves the authenticated user.
+    \item On logout, the session is invalidated and regenerated.
+\end{enumerate}
+
+\subsubsection{CSRF protection}
+
+State-changing requests (\texttt{POST}, \texttt{PUT}, \texttt{DELETE}, \texttt{PATCH}) require the \texttt{X-XSRF-TOKEN} header to match the \texttt{XSRF-TOKEN} cookie. This prevents cross-site request forgery attacks. Laravel's \texttt{ValidateCsrfToken} middleware enforces this. The frontend's axios instance is configured with \texttt{withXSRFToken: true} so it copies the cookie value into the header automatically.
+
+\subsubsection{Configuration}
+
+The Sanctum configuration (\texttt{config/sanctum.php}) specifies:
+\begin{itemize}
+    \item \texttt{stateful} domains --- origins allowed to receive stateful session cookies (\texttt{localhost:5173} in development)
+    \item \texttt{guard} --- \texttt{['web']}, the session-based guard
+    \item \texttt{expiration} --- \texttt{null} (session expires when the browser closes, consistent with cookie-based SPA auth)
+\end{itemize}
+
+Rate limiting on login is handled by a \texttt{throttle:login} middleware (5 attempts per minute) defined in \texttt{bootstrap/app.php}.
+
+\subsection{User Authentication: Google OAuth}
+
+Users may also authenticate via \textbf{Google OAuth 2.0} using Laravel Socialite. The flow is:
+
+\begin{enumerate}[leftmargin=*]
+    \item The user clicks ``Continue with Google'' on the login page.
+    \item The browser is redirected to Google's consent screen (\texttt{GET /api/auth/google}).
+    \item After the user consents, Google redirects back to \texttt{GET /api/auth/google/callback} with an authorization code.
+    \item The backend exchanges the code for a Google profile (name, email, avatar, Google ID) via Socialite.
+    \item The backend looks up or creates a \texttt{User} record keyed by \texttt{google\_id} or \texttt{email}.
+    \item Laravel logs the user in (\texttt{Auth::guard('web')->login()}), issuing the same Sanctum session cookie as email/password login.
+    \item The browser is redirected back to the frontend dashboard.
+\end{enumerate}
+
+\subsection{Device Authentication: Stateless API Token}
+
+Devices authenticate using a stateless API token. No session, no cookies, no CSRF. The token is sent in the \texttt{X-Device-Token} HTTP header on every request.
+
+\subsubsection{Inner workings}
+
+The \texttt{AuthenticateDevice} middleware (\texttt{app/Http/Middleware/AuthenticateDevice.php}) handles device authentication:
+
+\begin{enumerate}[leftmargin=*]
+    \item Read the \texttt{X-Device-Token} header from the request.
+    \item Hash the presented token with SHA\texttt{-}256.
+    \item Look up the device by comparing against the stored \texttt{api\_token} column (which holds \texttt{sha256(token)}).
+    \item If no device matches, return \texttt{401 Unauthorized}.
+    \item If the device's \texttt{status} is not \texttt{active}, return \texttt{403 Forbidden}.
+    \item Update \texttt{last\_seen\_at} to mark the device as online.
+    \item Attach the resolved \texttt{Device} model to the request attributes so the controller can use it without a second lookup.
+\end{enumerate}
+
+\subsubsection{Why hash the token?}
+
+Storing \texttt{sha256(token)} instead of the plaintext token means that even if the database is compromised, an attacker cannot recover the original device tokens and impersonate devices. The plaintext token exists only at generation time (\texttt{Device::generateToken()}) and is handed to whoever provisions the device (written to \texttt{storage/app/private/device-tokens.json} by the seeder, or shown once when a plant is created with a device token).
+
+\begin{lstlisting}[caption=Token generation in Device model]
+$token = Str::random(40);
+$this->api_token = hash('sha256', $token);
+$this->save();
+return $token; // returned once, never recoverable afterwards
+\end{lstlisting}
+
+\subsubsection{Configuration}
+
+The \texttt{device.auth} middleware alias is registered in \texttt{bootstrap/app.php}:
+
+\begin{lstlisting}[caption=Middleware alias registration]
+$middleware->alias([
+    'device.auth' => AuthenticateDevice::class,
+]);
+\end{lstlisting}
+
+To ensure the device is resolved before rate limiting, \texttt{ThrottleRequests} is prepended to the priority list after \texttt{AuthenticateDevice}:
+
+\begin{lstlisting}[caption=Middleware priority ordering]
+$middleware->prependToPriorityList(
+    ThrottleRequests::class,
+    AuthenticateDevice::class
+);
+\end{lstlisting}
+
+This guarantees the ingest rate limiter keys on the \textbf{device} (not the IP address), so multiple devices behind the same NAT are rate-limited independently.
+
+\subsection{Rate Limiting}
+
+Two rate limiters protect the system:
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{lll}
+\toprule
+\textbf{Limiter} & \textbf{Applies to} & \textbf{Limit} \\
+\midrule
+\texttt{throttle:login} & \texttt{POST /api/login} & 5 attempts / minute \\
+\texttt{throttle:device-ingest} & \texttt{POST /api/readings} & 30 requests / minute per device \\
+\bottomrule
+\end{tabular}
+\caption{Rate limiters}
+\end{table}
+
+\section{Roles and Access Levels}
+
+The system does not define traditional named roles (e.g., ``admin,'' ``editor''). Instead, access is determined by \textbf{entity type} and \textbf{ownership}:
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{p{3cm}p{4cm}p{5cm}}
+\toprule
+\textbf{Entity} & \textbf{Authentication} & \textbf{Access level} \\
+\midrule
+User (dashboard) & Sanctum session cookie (email/password or Google OAuth) & Can manage only plants they own (\texttt{user\_id} match). Other users' plants return \texttt{404}. \\
+Device & \texttt{X-Device-Token} header (stateless, SHA\texttt{-}256) & Can POST readings only for its own device. Token = device identity. \\
+\midrule
+\end{tabular}
+\caption{Authentication entities and access levels}
+\end{table}
+
+Device status (\texttt{DeviceStatus} enum) acts as an access gate:
+\begin{itemize}
+    \item \texttt{active} --- device may submit readings
+    \item \texttt{inactive} / \texttt{maintenance} --- device is rejected with \texttt{403 Forbidden}
+\end{itemize}
+
+There is no separate device ``role'' beyond its active/inactive status and its association with a user and plant.
+
+\section{Authorization}\label{sec:authorization}
+
+Authorization answers the question ``what may this authenticated entity do?''
+
+\subsection{User Authorization: PlantPolicy}
+
+Plant ownership is enforced through a Laravel \textbf{Policy} class (\texttt{app/Policies/PlantPolicy.php}). A plant ``belongs to exactly one user,'' and everything hanging off it (devices, readings, thresholds, alerts) inherits that ownership.
+
+\begin{lstlisting}[caption=PlantPolicy authorization rules]
+public function view(User $user, Plant $plant): Response
+{
+    return $this->owns($user, $plant);
+}
+
+public function update(User $user, Plant $plant): Response
+{
+    return $this->owns($user, $plant);
+}
+
+public function delete(User $user, Plant $plant): Response
+{
+    return $this->owns($user, $plant);
+}
+
+private function owns(User $user, Plant $plant): Response
+{
+    return $user->id === $plant->user_id
+        ? Response::allow()
+        : Response::denyAsNotFound();
+}
+\end{lstlisting}
+
+Key design choice: \texttt{denyAsNotFound()} returns an HTTP \texttt{404 Not Found} instead of \texttt{403 Forbidden} when a user accesses another user's plant. This is a deliberate \textbf{security-by-obscurity} measure: the API does not confirm whether a given plant ID exists if the requesting user does not own it, preventing enumeration of other users' plants.
+
+The controller enforces authorization via Laravel's \texttt{Gate}:
+
+\begin{lstlisting}[caption=Gate::authorize in PlantController]
+public function show(Plant $plant): PlantResource
+{
+    Gate::authorize('view', $plant);
+    return new PlantResource($plant->load(...));
+}
+
+public function update(PlantRequest $request, Plant $plant): PlantResource
+{
+    Gate::authorize('update', $plant);
+    $plant->update($request->validated());
+    ...
+}
+
+public function destroy(Plant $plant): Response
+{
+    Gate::authorize('delete', $plant);
+    $plant->delete();
+    ...
+}
+\end{lstlisting}
+
+The plant list endpoint (\texttt{index}) does not need an explicit gate because it queries only the authenticated user's own plants:
+
+\begin{lstlisting}[caption=User-scoped plant list]
+$plants = $request->user()
+    ->plants()
+    ->with(...)
+    ->orderBy('name')
+    ->get();
+\end{lstlisting}
+
+\subsection{Device Authorization}
+
+Device authorization is implicit in authentication: the \texttt{X-Device-Token} identifies a specific device, and that device may only POST readings to its own ingest endpoint (\texttt{POST /api/readings}). The resolved device is attached to the request, and the \texttt{ReadingController} associates the reading with that device. A device cannot read or modify another device's data because the ingest endpoint is write-only for devices.
+
+\subsection{Route-Level Authorization}
+
+All dashboard API routes are grouped under the \texttt{auth:sanctum} middleware, meaning unauthenticated requests are rejected with \texttt{401} before reaching any controller:
+
+\begin{lstlisting}[caption=Route group with sanctum middleware]
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/logout', ...);
+    Route::get('/user', ...);
+    Route::apiResource('plants', PlantController::class);
+    Route::put('/devices/{device}/thresholds', ...);
+    Route::get('/alerts', ...);
+});
+\end{lstlisting}
+
+Device routes use the \texttt{device.auth} middleware instead:
+
+\begin{lstlisting}[caption=Device route with device.auth middleware]
+Route::post('/readings', [ReadingController::class, 'store'])
+    ->middleware(['device.auth', 'throttle:device-ingest']);
+\end{lstlisting}
+
+\subsection{Frontend Route Guards}
+
+On the frontend, the Vue router (\texttt{frontend/src/router.js}) implements client-side guards:
+\begin{itemize}
+    \item Routes with \texttt{meta: \{ guest: true \}} (e.g., \texttt{/login}) redirect authenticated users to the dashboard.
+    \item Routes without \texttt{guest} redirect unauthenticated users to \texttt{/login}.
+    \item A global \texttt{onUnauthorized} handler listens for \texttt{401} responses from the API and automatically logs the user out and redirects to the login page.
+\end{itemize}
+
+These are convenience guards for the user experience; the backend remains the source of truth for authorization.
+
+\section{Security Summary}
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{p{4cm}p{7cm}}
+\toprule
+\textbf{Control} & \textbf{Implementation} \\
+\midrule
+Password storage & bcrypt hashing (Laravel \texttt{Hidden} on \texttt{password} field) \\
+Session fixation prevention & \texttt{session()->regenerate()} on login and logout \\
+Token storage & \texttt{sha256(token)} stored; plaintext never persisted \\
+Session type & HttpOnly cookie (inaccessible to JavaScript, mitigates XSS token theft) \\
+CSRF protection & \texttt{XSRF-TOKEN} cookie + \texttt{X-XSRF-TOKEN} header on state-changing requests \\
+Authorization bypass & Plant ownership check via \texttt{PlantPolicy}; \texttt{denyAsNotFound()} prevents ID enumeration \\
+Device lockout & \texttt{status} must be \texttt{active}; \texttt{inactive}/\texttt{maintenance} returns \texttt{403} \\
+Rate limiting & 5 login attempts/min; 30 device ingest requests/min per device \\
+OAuth & Google OAuth 2.0 via Laravel Socialite; stateless driver \\
+\midrule
+\end{tabular}
+\caption{Security controls summary}
+\end{table}
+
+\section{Demo Accounts}
+
+The seeder creates two demo accounts (password: \texttt{password}):
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{lll}
+\toprule
+\textbf{Email} & \textbf{Plants} & \textbf{Purpose} \\
+\midrule
+\texttt{test@example.com} & Monstera, Cactus, Fiddle Leaf Fig & Primary user account \\
+\texttt{second@example.com} & Calathea, Boston Fern & Second user (for cross-user authorization testing) \\
+\bottomrule
+\end{tabular}
+\caption{Demo accounts created by \texttt{php artisan migrate --seed}}
+\end{table}
+
+Device tokens are written to \texttt{backend/storage/app/private/device-tokens.json} during seeding.
+
+\section{Conclusion}
+
+Verdant implements a dual-guard authentication and authorization architecture: Laravel Sanctum session-based SPA authentication for human users of the dashboard, and stateless SHA\texttt{-}256-hashed API token authentication for ESP sensor devices. Authorization is ownership-based, enforced through Laravel Policies and Gates, with deliberate 404 responses to prevent resource enumeration. Rate limiting, CSRF protection, session fixation prevention, and HttpOnly cookies round out the defense-in-depth strategy.
+
+\end{document}
