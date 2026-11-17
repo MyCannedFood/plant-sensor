@@ -5,7 +5,6 @@ Uses Typer for command-line interface.
 
 import asyncio
 import sys
-from pathlib import Path
 
 import typer
 from rich.console import Console
@@ -50,11 +49,6 @@ def main(
     elif quiet:
         logging.getLogger().setLevel(logging.WARNING)
 
-    # Ensure token file exists
-    token_path = Path(settings.token_file)
-    if not token_path.exists():
-        logger.warning(f"Token file not found: {token_path}")
-        logger.warning("Run 'cd backend && ./vendor/bin/sail artisan db:seed' to generate tokens")
 
 
 app.add_typer(simulate_app, name="simulate")

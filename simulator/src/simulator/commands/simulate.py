@@ -28,8 +28,8 @@ async def _run_simulation(
     dry_run: bool,
     once: bool,
     api_url: str | None,
-    token_file: str | None,
     ws_url: str | None,
+    unit: str = "minutes",
 ) -> int:
     """
     Run the simulation loop.
@@ -40,13 +40,11 @@ async def _run_simulation(
     # Override settings with CLI args
     if api_url:
         settings.api_url = api_url
-    if token_file:
-        settings.token_file = token_file
     if ws_url:
         settings.ws_url = ws_url
 
     # Initialize components
-    token_manager = TokenManager(settings.token_file)
+    token_manager = TokenManager(token_file=settings.token_file)
     api_client = ApiClient(base_url=settings.api_url, verify_ssl=settings.verify_ssl)
     sensor_generator = SensorGenerator(variance=variance)
     ws_manager = MultiDeviceWebSocketManager(ws_url=settings.ws_url) if settings.ws_url else None
@@ -112,7 +110,10 @@ async def _run_simulation(
             pass
 
     # Main simulation loop
-    interval_seconds = interval_minutes * 60
+    if unit == "seconds":
+        interval_seconds = interval_minutes
+    else:
+        interval_seconds = interval_minutes * 60
     end_time = start_time.timestamp() + (duration_minutes * 60) if duration_minutes > 0 else None
 
     with Progress(
@@ -277,8 +278,8 @@ def simulate(
     dry_run: bool = typer.Option(False, "--dry-run", help="Print payloads without sending"),
     once: bool = typer.Option(False, "--once", help="Send one batch then exit"),
     api_url: str | None = typer.Option(None, "--api-url", help="Override API base URL"),
-    token_file: str | None = typer.Option(None, "--token-file", help="Override token file path"),
     ws_url: str | None = typer.Option(None, "--ws-url", help="WebSocket URL for real-time updates"),
+    unit: str = typer.Option("minutes", "--unit", "-u", help="Time unit for interval (minutes or seconds)"),
 ) -> None:
     """
     Generate and send sensor readings to the backend API.
@@ -307,7 +308,7 @@ def simulate(
             dry_run=dry_run,
             once=once,
             api_url=api_url,
-            token_file=token_file,
             ws_url=ws_url,
+            unit=unit,
         ))
         sys.exit(exit_code)

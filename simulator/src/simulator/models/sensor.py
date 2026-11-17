@@ -86,13 +86,6 @@ SENSOR_BOUNDS: dict[ThresholdParameter, SensorBounds] = {
     ThresholdParameter.WATER_LEVEL: SensorBounds(min_value=0, max_value=100, is_integer=True, decimal_places=0),
 }
 
-# Parameters that require at least one measurement (from StoreReadingRequest after() hook)
-REQUIRED_MEASUREMENT_PARAMS: frozenset[ThresholdParameter] = frozenset({
-    ThresholdParameter.CO2,
-    ThresholdParameter.TEMPERATURE,
-    ThresholdParameter.HUMIDITY,
-})
-
 # All parameter values for iteration
 ALL_PARAMETERS: tuple[ThresholdParameter, ...] = tuple(ThresholdParameter)
 
@@ -113,13 +106,14 @@ def validate_reading_payload(payload: dict) -> list[str]:
     """
     errors = []
 
-    # Check at least one required measurement present
+    # Check at least one measurement present (matches backend StoreReadingRequest after() hook,
+    # which checks all ThresholdParameter cases, not just co2/temperature/humidity)
     has_measurement = any(
         payload.get(param.value) is not None
-        for param in REQUIRED_MEASUREMENT_PARAMS
+        for param in ALL_PARAMETERS
     )
     if not has_measurement:
-        errors.append("At least one of co2, temperature or humidity must be present.")
+        errors.append("At least one sensor measurement must be present.")
 
     # Validate each parameter
     for param in ALL_PARAMETERS:

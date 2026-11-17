@@ -47,6 +47,7 @@ simulator simulate [OPTIONS]
 Options:
   -d, --device TEXT       Filter by device serial number
   -i, --interval INT      Minutes between reading batches (default: 10)
+  -u, --unit TEXT         Time unit for interval: minutes or seconds (default: minutes)
   --duration INT          Total minutes to run (0 = infinite, default: 0)
   -v, --variance FLOAT    Drift factor 0.15 = ±15% (default: 0.15)
   --dry-run               Print payloads without sending

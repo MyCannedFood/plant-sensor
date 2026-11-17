@@ -1,0 +1,17 @@
+{
+    "LIVING001": {
+        "device_id": 1,
+        "serial_number": "LIVING001",
+        "token": "wvQoKfR9liUIgkjBECKdzOreHUSa5JXu4HASlcTj"
+    },
+    "KITCHEN001": {
+        "device_id": 2,
+        "serial_number": "KITCHEN001",
+        "token": "Oh6bSnpjgGaiqNegNqu8bnezH636zYtlfFzi0rs0"
+    },
+    "BEDROOM001": {
+        "device_id": 3,
+        "serial_number": "BEDROOM001",
+        "token": "9aXS3805MBnCuIABgIRaeHVWcY5hJNqHCkdOcdpm"
+    }
+}

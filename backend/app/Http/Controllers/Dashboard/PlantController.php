@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Dashboard;
 
-use App\Enums\DeviceStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\PlantRequest;
 use App\Http\Resources\PlantResource;
@@ -40,18 +39,24 @@ class PlantController extends Controller
 
         if ($request->filled('device_token')) {
             $token = $request->input('device_token');
+            $tokenHash = hash('sha256', $token);
 
-            // Find device by token (sha256 lookup)
-            $device = Device::where('api_token', hash('sha256', $token))
+            // Find device by token hash in the database.
+            $device = Device::where('api_token', $tokenHash)
                 ->unassigned()
-                ->firstOrFail();
+                ->first();
+
+            if ($device === null) {
+                abort(404, 'The device token is not valid.');
+            }
 
             // Link device to plant
             $device->plant_id = $plant->id;
             $device->save();
 
-            // Generate new token for the device (rotation)
-            $deviceToken = $device->generateToken();
+            // Device keeps its original token from the seeder.
+            // No rotation: the simulator/device authenticates with the same token.
+            $deviceToken = $token;
         }
 
         return (new PlantResource($plant->load($this->monitorRelations())))

@@ -14,18 +14,20 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
+        env_prefix="SIMULATOR_",
         case_sensitive=False,
         extra="ignore",
     )
 
     # Simulator defaults
     default_interval: int = Field(default=10, description="Minutes between reading batches")
+    default_interval_unit: str = Field(default="minutes", description="Time unit for interval (minutes or seconds)")
     default_variance: float = Field(default=0.15, description="Drift factor (0.15 = ±15%)")
 
     # API Configuration
     api_url: str = Field(default="http://localhost", description="Base URL without /api (e.g., https://api.example.com)")
-    token_file: str = Field(default="../backend/storage/app/private/device-tokens.json", description="Path to device tokens JSON file")
     verify_ssl: bool = Field(default=True, description="Verify SSL certificates for HTTPS")
+    token_file: str | None = Field(default=None, description="Path to device tokens JSON file (SIMULATOR_TOKEN_FILE)")
 
     # WebSocket (optional, for real-time updates)
     ws_url: Optional[str] = Field(default=None, description="WebSocket URL for real-time updates (e.g., wss://api.example.com/ws)")

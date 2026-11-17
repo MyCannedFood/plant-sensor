@@ -2,46 +2,30 @@
 
 namespace Database\Seeders;
 
-use App\Enums\AlertDirection;
-use App\Enums\AlertSeverity;
+use App\Enums\DeviceStatus;
 use App\Enums\ThresholdParameter;
-use App\Models\Alert;
 use App\Models\Device;
 use App\Models\DeviceSensor;
-use App\Models\Plant;
-use App\Models\Reading;
 use App\Models\Threshold;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
-use Illuminate\Database\Eloquent\Factories\Sequence;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
-/**
- * @phpstan-type PlantDefinition array{
- *     label: string,
- *     owner: string,
- *     species: string,
- *     location: string,
- *     notes: string,
- *     conditions: array{co2: float, temperature: float, humidity: float},
- *     thresholds: array<string, array{0: float, 1: float}>
- * }
- */
 class DatabaseSeeder extends Seeder
 {
     use WithoutModelEvents;
 
     /**
-     * Minutes between two consecutive readings.
+     * The accounts to seed. Both use the password "password".
+     *
+     * @var array<string, string>
      */
-    private const SAMPLE_INTERVAL_MINUTES = 10;
-
-    /**
-     * Readings seeded per device, covering seven days at the interval above.
-     */
-    private const READINGS_PER_DEVICE = 1008;
+    private const USERS = [
+        'test@example.com' => 'Test User',
+        'second@example.com' => 'Second User',
+    ];
 
     /**
      * Fallback thresholds applied to any parameter a device has not overridden.
@@ -60,101 +44,38 @@ class DatabaseSeeder extends Seeder
     ];
 
     /**
-     * The accounts to seed, keyed by email. Both use the password "password".
+     * Unconnected devices (plant_id = null) with the sensors each carries.
      *
-     * Two ordinary users with no special role: each owns a separate set of
-     * plants (and through them devices, readings and alerts), which is what
-     * lets the demo show one user being refused another user's data.
-     *
-     * @var array<string, string>
+     * @var list<array{name: string, serial_number: string, sensors: list<ThresholdParameter>}>
      */
-    private const USERS = [
-        'test@example.com' => 'Test User',
-        'second@example.com' => 'Second User',
-    ];
-
-    /**
-     * The plants to seed, each with the conditions it thrives in and the
-     * thresholds that override the global defaults. A parameter missing from
-     * `thresholds` deliberately falls back to the global default.
-     *
-     * @var list<PlantDefinition>
-     */
-    private const PLANTS = [
+    private const DEVICES = [
         [
-            'label' => 'Monstera',
-            'owner' => 'test@example.com',
-            'species' => 'Monstera deliciosa',
-            'location' => 'Living Room',
-            'notes' => 'Leaves started curling, check humidity twice a week.',
-            'conditions' => ['co2' => 780, 'temperature' => 24.5, 'humidity' => 76, 'ph' => 6.2, 'ec' => 1200, 'water_temperature' => 23, 'light' => 15000, 'water_level' => 65],
-            'thresholds' => ['humidity' => [60, 90], 'ph' => [5.5, 6.8], 'light' => [10000, 30000]],
+            'name'      => 'Living Room Sensor',
+            'serial_number' => 'LIVING001',
+            'sensors'   => [
+                ThresholdParameter::Co2,
+                ThresholdParameter::Temperature,
+                ThresholdParameter::Humidity,
+            ],
         ],
         [
-            'label' => 'Cactus',
-            'owner' => 'test@example.com',
-            'species' => 'Euphorbia trigona',
-            'location' => 'Kitchen',
-            'notes' => 'Water once a month in winter, never let it sit in water.',
-            'conditions' => ['co2' => 640, 'temperature' => 29, 'humidity' => 32, 'ph' => 7.0, 'ec' => 800, 'water_temperature' => 25, 'light' => 50000, 'water_level' => 20],
-            'thresholds' => ['temperature' => [20, 35], 'humidity' => [20, 45], 'water_level' => [10, 40]],
+            'name'      => 'Kitchen Sensor',
+            'serial_number' => 'KITCHEN001',
+            'sensors'   => [
+                ThresholdParameter::Temperature,
+                ThresholdParameter::Humidity,
+                ThresholdParameter::Light,
+            ],
         ],
         [
-            'label' => 'Fiddle Leaf Fig',
-            'owner' => 'test@example.com',
-            'species' => 'Ficus lyrata',
-            'location' => 'Study',
-            'notes' => 'Hates being moved. Rotate a quarter turn each month.',
-            'conditions' => ['co2' => 720, 'temperature' => 23, 'humidity' => 61, 'ph' => 6.5, 'ec' => 1000, 'water_temperature' => 22, 'light' => 20000, 'water_level' => 55],
-            'thresholds' => ['co2' => [400, 1100], 'humidity' => [50, 75], 'light' => [15000, 40000]],
+            'name'      => 'Bedroom Sensor',
+            'serial_number' => 'BEDROOM001',
+            'sensors'   => [
+                ThresholdParameter::Co2,
+                ThresholdParameter::Ph,
+                ThresholdParameter::WaterLevel,
+            ],
         ],
-        [
-            'label' => 'Calathea',
-            'owner' => 'second@example.com',
-            'species' => 'Calathea orbifolia',
-            'location' => 'Bedroom',
-            'notes' => 'Brown edges usually mean dry air, not thirst.',
-            'conditions' => ['co2' => 690, 'temperature' => 22, 'humidity' => 68, 'ph' => 6.0, 'ec' => 900, 'water_temperature' => 21, 'light' => 8000, 'water_level' => 70],
-            'thresholds' => ['humidity' => [60, 80], 'ph' => [5.5, 6.5]],
-        ],
-        [
-            'label' => 'Boston Fern',
-            'owner' => 'second@example.com',
-            'species' => 'Nephrolepis exaltata',
-            'location' => 'Bathroom',
-            'notes' => 'Mist daily while the heating is on.',
-            'conditions' => ['co2' => 810, 'temperature' => 21, 'humidity' => 81, 'ph' => 5.8, 'ec' => 1100, 'water_temperature' => 20, 'light' => 5000, 'water_level' => 85],
-            'thresholds' => ['humidity' => [70, 95], 'water_level' => [60, 95]],
-        ],
-    ];
-
-    /**
-     * The sensors each device carries, keyed by plant label. A node reports a
-     * parameter only when it physically has the sensor for it: a DHT22 covers
-     * temperature and humidity, an MH-Z19C covers co2, and the two may be
-     * mixed across nodes. Readings stop at the declared set, which is what
-     * makes a null measurement mean "no sensor" instead of a gap.
-     *
-     * @var array<string, list<ThresholdParameter>>
-     */
-    private const DEVICE_SENSORS = [
-        'Monstera' => [ThresholdParameter::Co2, ThresholdParameter::Temperature, ThresholdParameter::Humidity, ThresholdParameter::Ph, ThresholdParameter::Ec, ThresholdParameter::Light],
-        'Cactus' => [ThresholdParameter::Temperature, ThresholdParameter::Humidity, ThresholdParameter::WaterLevel, ThresholdParameter::Light],
-        'Fiddle Leaf Fig' => [ThresholdParameter::Temperature, ThresholdParameter::Humidity, ThresholdParameter::Ph, ThresholdParameter::Light],
-        'Calathea' => [ThresholdParameter::Co2, ThresholdParameter::Ph, ThresholdParameter::WaterLevel],
-        'Boston Fern' => [ThresholdParameter::Co2, ThresholdParameter::Temperature, ThresholdParameter::Humidity, ThresholdParameter::WaterTemperature, ThresholdParameter::WaterLevel],
-    ];
-
-    /**
-     * Incidents replayed on top of the generated history so the dashboard has
-     * alerts to show before the evaluation service exists.
-     *
-     * @var list<array{plant: int, parameter: string, direction: string, value: float, severity: string, minutesAgo: int, resolved: bool}>
-     */
-    private const INCIDENTS = [
-        ['plant' => 4, 'parameter' => 'humidity', 'direction' => 'below_min', 'value' => 48, 'severity' => 'critical', 'minutesAgo' => 25, 'resolved' => false],
-        ['plant' => 0, 'parameter' => 'co2', 'direction' => 'above_max', 'value' => 1640, 'severity' => 'warning', 'minutesAgo' => 90, 'resolved' => false],
-        ['plant' => 2, 'parameter' => 'temperature', 'direction' => 'above_max', 'value' => 33.4, 'severity' => 'warning', 'minutesAgo' => 400, 'resolved' => true],
     ];
 
     /**
@@ -162,10 +83,8 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        $users = [];
-
         foreach (self::USERS as $email => $name) {
-            $users[$email] = User::query()->firstOrCreate(
+            User::query()->firstOrCreate(
                 ['email' => $email],
                 ['name' => $name, 'password' => 'password'],
             );
@@ -173,61 +92,37 @@ class DatabaseSeeder extends Seeder
 
         $this->seedGlobalThresholds();
 
-        $devices = [];
         $tokens = [];
 
-        // Create the demo plants with their devices (backward compatible)
-        foreach (self::PLANTS as $index => $definition) {
-            $plant = Plant::query()->firstOrCreate(
-                ['user_id' => $users[$definition['owner']]->id, 'name' => $definition['label']],
-                ['species' => $definition['species'], 'location' => $definition['location'], 'notes' => $definition['notes']],
-            );
-
+        foreach (self::DEVICES as $deviceData) {
             $device = Device::query()->firstOrCreate(
-                ['plant_id' => $plant->id],
-                ['name' => "{$definition['label']} Sensor", 'serial_number' => strtoupper(Str::random(12)), 'api_token' => hash('sha256', Str::random(40))],
+                ['serial_number' => $deviceData['serial_number']],
+                [
+                    'name' => $deviceData['name'],
+                    'api_token' => hash('sha256', Str::random(40)),
+                    'status' => DeviceStatus::Active->value,
+                    'plant_id' => null,
+                ],
             );
 
             $token = $device->generateToken();
 
-            $this->seedThresholds($device, $definition['thresholds']);
+            // Declare the sensors this physical node carries.
+            foreach ($deviceData['sensors'] as $parameter) {
+                DeviceSensor::query()->firstOrCreate([
+                    'device_id' => $device->id,
+                    'parameter' => $parameter,
+                ]);
+            }
 
-            $parameters = self::DEVICE_SENSORS[$definition['label']];
-
-            $this->seedDeviceSensors($device, $parameters);
-            $this->seedReadings($device, $definition['conditions'], $parameters);
-
-            $devices[$index] = ['device' => $device, 'conditions' => $definition['conditions'], 'parameters' => $parameters];
-
-            $tokens[$definition['label']] = [
-                'owner' => $definition['owner'],
+            $tokens[$deviceData['serial_number']] = [
                 'device_id' => $device->id,
                 'serial_number' => $device->serial_number,
                 'token' => $token,
             ];
         }
 
-        $this->seedIncidents($devices);
         $this->writeDeviceTokens($tokens);
-    }
-
-    /**
-     * Write the plaintext device tokens to a local file for the simulator.
-     *
-     * The local disk roots at storage/app/private, so the file lands at
-     * storage/app/private/device-tokens.json (gitignored). It exists so the
-     * artisan simulator (and firmware during development) can authenticate
-     * without a token surviving in the database. The file is intentionally
-     * written last, after every seeding step has had a chance to fail.
-     *
-     * @param  array<string, array{owner: string, device_id: int, serial_number: string, token: string}>  $tokens
-     */
-    private function writeDeviceTokens(array $tokens): void
-    {
-        Storage::disk('local')->put(
-            'device-tokens.json',
-            json_encode($tokens, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES),
-        );
     }
 
     /**
@@ -244,151 +139,15 @@ class DatabaseSeeder extends Seeder
     }
 
     /**
-     * Seed the thresholds a device overrides for the given parameters.
+     * Write the plaintext device tokens to a local file for the simulator.
      *
-     * @param  array<string, array{0: float, 1: float}>  $thresholds
+     * @param  array<string, array{device_id: int, serial_number: string, token: string}>  $tokens
      */
-    private function seedThresholds(Device $device, array $thresholds): void
+    private function writeDeviceTokens(array $tokens): void
     {
-        foreach ($thresholds as $parameter => [$minValue, $maxValue]) {
-            Threshold::query()->firstOrCreate(
-                ['device_id' => $device->id, 'parameter' => $parameter],
-                ['min_value' => $minValue, 'max_value' => $maxValue],
-            );
-        }
-    }
-
-    /**
-     * Declare the parameters the device physically reports on.
-     *
-     * firstOrCreate keeps re-seeding idempotent: the unique key on
-     * (device_id, parameter) would otherwise reject a second run.
-     *
-     * @param  list<ThresholdParameter>  $parameters
-     */
-    private function seedDeviceSensors(Device $device, array $parameters): void
-    {
-        foreach ($parameters as $parameter) {
-            DeviceSensor::query()->firstOrCreate([
-                'device_id' => $device->id,
-                'parameter' => $parameter,
-            ]);
-        }
-    }
-
-    /**
-     * Seed a week of readings that drift around the conditions a plant likes.
-     *
-     * @param  array<string, float>  $conditions
-     * @param  list<ThresholdParameter>  $parameters
-     */
-    private function seedReadings(Device $device, array $conditions, array $parameters): void
-    {
-        if ($device->readings()->exists()) {
-            return;
-        }
-
-        Reading::factory()
-            ->for($device)
-            ->count(self::READINGS_PER_DEVICE)
-            ->sequence(function (Sequence $sequence) use ($conditions, $parameters) {
-                return [
-                    'measured_at' => now()->subMinutes(self::SAMPLE_INTERVAL_MINUTES * (self::READINGS_PER_DEVICE - $sequence->index)),
-                    // A parameter the device does not carry stays null in
-                    // every row: the capability table says no sensor exists,
-                    // so the absence must not read as a failed measurement.
-                    'co2' => in_array(ThresholdParameter::Co2, $parameters, true)
-                        ? (int) round($conditions['co2'] + fake()->numberBetween(-45, 45))
-                        : null,
-                    'temperature' => in_array(ThresholdParameter::Temperature, $parameters, true)
-                        ? round($conditions['temperature'] + fake()->randomFloat(2, -1.4, 1.4), 2)
-                        : null,
-                    'humidity' => in_array(ThresholdParameter::Humidity, $parameters, true)
-                        ? (int) round($conditions['humidity'] + fake()->numberBetween(-5, 5))
-                        : null,
-                    'ph' => in_array(ThresholdParameter::Ph, $parameters, true)
-                        ? round($conditions['ph'] + fake()->randomFloat(2, -0.3, 0.3), 1)
-                        : null,
-                    'ec' => in_array(ThresholdParameter::Ec, $parameters, true)
-                        ? (int) round($conditions['ec'] + fake()->numberBetween(-100, 100))
-                        : null,
-                    'water_temperature' => in_array(ThresholdParameter::WaterTemperature, $parameters, true)
-                        ? round($conditions['water_temperature'] + fake()->randomFloat(2, -1.0, 1.0), 2)
-                        : null,
-                    'light' => in_array(ThresholdParameter::Light, $parameters, true)
-                        ? (int) round($conditions['light'] + fake()->numberBetween(-2000, 2000))
-                        : null,
-                    'water_level' => in_array(ThresholdParameter::WaterLevel, $parameters, true)
-                        ? (int) round($conditions['water_level'] + fake()->numberBetween(-5, 5))
-                        : null,
-                ];
-            })
-            ->create();
-    }
-
-    /**
-     * Seed out-of-range readings together with the alerts they explain.
-     *
-     * @param  array<int, array{device: Device, conditions: array<string, float>, parameters: list<ThresholdParameter>}>  $devices
-     */
-    private function seedIncidents(array $devices): void
-    {
-        foreach (self::INCIDENTS as $incident) {
-            ['device' => $device, 'conditions' => $conditions, 'parameters' => $parameters] = $devices[$incident['plant']];
-
-            $parameter = ThresholdParameter::from($incident['parameter']);
-
-            if (Alert::query()
-                ->where('device_id', $device->id)
-                ->where('parameter', $parameter)
-                ->exists()) {
-                continue;
-            }
-
-            // History readings sit on whole multiples of the sample interval
-            // from now; an incident at 90 or 400 minutes would land on exactly
-            // the same instant and break the (device_id, measured_at) unique
-            // key whenever both were stamped in the same second. A few
-            // seconds' offset keeps the incident between two history points.
-            $measuredAt = now()->subMinutes($incident['minutesAgo'])->subSeconds(37);
-
-            // The field the incident is about carries the incident value, the
-            // others carry the plant's usual condition, and a parameter the
-            // device does not report stays null even in an incident reading.
-            $field = fn (ThresholdParameter $target): int|float|null => match (true) {
-                $target === $parameter => $incident['value'],
-                in_array($target, $parameters, true) => $conditions[$target->value],
-                default => null,
-            };
-
-            $reading = Reading::query()->create([
-                'device_id' => $device->id,
-                'measured_at' => $measuredAt,
-                // An incident was measured minutes ago and is being replayed
-                // now, so the two timestamps deliberately differ. That is the
-                // shape of a device uploading a backlog after losing WiFi.
-                'received_at' => now(),
-                'co2' => $field(ThresholdParameter::Co2),
-                'temperature' => $field(ThresholdParameter::Temperature),
-                'humidity' => $field(ThresholdParameter::Humidity),
-                'ph' => $field(ThresholdParameter::Ph),
-                'ec' => $field(ThresholdParameter::Ec),
-                'water_temperature' => $field(ThresholdParameter::WaterTemperature),
-                'light' => $field(ThresholdParameter::Light),
-                'water_level' => $field(ThresholdParameter::WaterLevel),
-            ]);
-
-            Alert::query()->create([
-                'reading_id' => $reading->id,
-                'device_id' => $device->id,
-                'threshold_id' => Threshold::query()->applicableTo($device)->where('parameter', $parameter)->value('id'),
-                'parameter' => $parameter,
-                'direction' => AlertDirection::from($incident['direction']),
-                'severity' => AlertSeverity::from($incident['severity']),
-                'value' => $incident['value'],
-                'triggered_at' => $measuredAt,
-                'resolved_at' => $incident['resolved'] ? $measuredAt->copy()->addMinutes(30) : null,
-            ]);
-        }
+        Storage::disk('local')->put(
+            'device-tokens.json',
+            json_encode($tokens, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES),
+        );
     }
 }

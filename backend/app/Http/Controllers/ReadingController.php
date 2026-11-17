@@ -2,11 +2,16 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\AlertDirection;
+use App\Enums\AlertSeverity;
 use App\Enums\ThresholdParameter;
 use App\Http\Requests\StoreReadingRequest;
 use App\Http\Resources\ReadingResource;
+use App\Models\Alert;
+use App\Models\Device;
 use App\Models\DeviceSensor;
 use App\Models\Reading;
+use App\Models\Threshold;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -49,11 +54,18 @@ class ReadingController extends Controller
             ],
         );
 
-        if ($reading->wasRecentlyCreated) {
+        $isNew = $reading->wasRecentlyCreated;
+        $isDuplicateMatch = $this->storedValuesMatch($reading, $validated);
+
+        if ($isNew || $isDuplicateMatch) {
+            $this->evaluateAlerts($device, $reading, $validated);
+        }
+
+        if ($isNew) {
             return (new ReadingResource($reading))->response()->setStatusCode(201);
         }
 
-        if ($this->storedValuesMatch($reading, $validated)) {
+        if ($isDuplicateMatch) {
             return (new ReadingResource($reading))->response();
         }
 
@@ -119,5 +131,87 @@ class ReadingController extends Controller
         }
 
         return true;
+    }
+
+    /**
+     * Evaluate a stored reading against thresholds and create or resolve
+     * alerts for any breached parameters.
+     *
+     * @param  array<string, mixed>  $validated
+     */
+    private function evaluateAlerts(Device $device, Reading $reading, array $validated): void
+    {
+        foreach (ThresholdParameter::cases() as $parameter) {
+            $column = $parameter->readingColumn();
+            $value = $validated[$column] ?? null;
+
+            if ($value === null) {
+                continue;
+            }
+
+            $threshold = Threshold::query()
+                ->applicableTo($device)
+                ->where('parameter', $parameter)
+                ->orderByRaw('device_id is null')
+                ->first();
+
+            $min = $threshold?->min_value !== null ? (float) $threshold->min_value : null;
+            $max = $threshold?->max_value !== null ? (float) $threshold->max_value : null;
+
+            if ($min === null || $max === null) {
+                // No bounds configured — nothing to alert on.
+                continue;
+            }
+
+            $breachDirection = null;
+            if ($value < $min) {
+                $breachDirection = AlertDirection::BelowMinimum->value;
+            } elseif ($value > $max) {
+                $breachDirection = AlertDirection::AboveMaximum->value;
+            }
+
+            $existing = Alert::query()
+                ->where('device_id', $device->id)
+                ->where('parameter', $parameter)
+                ->whereNull('resolved_at')
+                ->first();
+
+            if ($breachDirection === null) {
+                // Value is back within bounds — resolve any open alert.
+                if ($existing) {
+                    $existing->update(['resolved_at' => $reading->measured_at]);
+                }
+                continue;
+            }
+
+            // Severity: severe breach (beyond half the range width) = critical.
+            $rangeWidth = $max - $min;
+            $breachAmount = $breachDirection === AlertDirection::BelowMinimum->value
+                ? $min - (float) $value
+                : (float) $value - $max;
+            $severity = $rangeWidth > 0 && ($breachAmount / $rangeWidth) > 0.5
+                ? AlertSeverity::Critical->value
+                : AlertSeverity::Warning->value;
+
+            if ($existing) {
+                if ($existing->direction === $breachDirection) {
+                    // Same direction already alerting — no change needed.
+                    continue;
+                }
+                // Direction flipped — resolve the old alert, create a new one.
+                $existing->update(['resolved_at' => $reading->measured_at]);
+            }
+
+            Alert::query()->create([
+                'reading_id' => $reading->id,
+                'device_id' => $device->id,
+                'threshold_id' => $threshold?->id,
+                'parameter' => $parameter,
+                'direction' => $breachDirection,
+                'severity' => $severity,
+                'value' => $value,
+                'triggered_at' => $reading->measured_at,
+            ]);
+        }
     }
 }

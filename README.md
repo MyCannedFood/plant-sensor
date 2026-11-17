@@ -51,9 +51,6 @@ php artisan serve
 - `test@example.com` — Monstera, Cactus, Fiddle Leaf Fig
 - `second@example.com` — Calathea, Boston Fern
 
-> **Catatan**: Sanctum & Socialite sudah terpasang. Tidak perlu `composer require` lagi.
-- lakukan `composer require sacntum && composer require Socialite` jika belum ada 
-
 #### Troubleshooting Backend
 
 | Masalah | Solusi |
@@ -174,12 +171,3 @@ Kalau dipisah per subdomain (misalnya `app.domain.com` dan `api.domain.com`):
 - Frontend: `VITE_API_URL=https://api.domain.com`, lalu `npm run build`
 - Backend: `FRONTEND_URL=https://app.domain.com`, `SANCTUM_STATEFUL_DOMAINS=app.domain.com`,
   `SESSION_DOMAIN=.domain.com`, dan `SESSION_SECURE_COOKIE=true`
-
-## Yang belum ada
-
-- **Alert otomatis.** Status merah di dashboard sudah muncul saat nilai melewati batas, tetapi
-  record di tabel `alerts` belum dibuat otomatis ketika reading masuk. Data alert yang terlihat
-  berasal dari seeder.
-- **Sensor lain di diagram** (pH, EC, suhu air, cahaya, level air) belum didukung backend.
-- **Pendaftaran user dan manajemen device** belum ada di dashboard. User dan device masih dibuat
-  lewat seeder atau `php artisan tinker`.

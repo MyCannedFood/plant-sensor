@@ -17,12 +17,14 @@ class TokenManager:
     """Manages device tokens loaded from JSON file."""
 
     def __init__(self, token_file: str | None = None):
-        self.token_file = token_file or settings.token_file
+        self.token_file = token_file
         self._tokens: dict[str, dict] = {}
         self._load_tokens()
 
     def _load_tokens(self) -> None:
         """Load tokens from JSON file."""
+        if not self.token_file:
+            return
         path = Path(self.token_file)
         if not path.exists():
             raise FileNotFoundError(
@@ -46,9 +48,15 @@ class TokenManager:
                         "plant_name": plant_name,
                     }
         elif isinstance(data, list):
-            for info in data:
+            for index, info in enumerate(data):
                 if isinstance(info, dict) and "serial_number" in info and "token" in info:
-                    self._tokens[info["serial_number"]] = info
+                    self._tokens[info["serial_number"]] = {
+                        "device_id": info.get("device_id", index + 1),
+                        "serial_number": info["serial_number"],
+                        "token": info["token"],
+                        "owner": info.get("owner"),
+                        "plant_name": info.get("name"),
+                    }
 
     def get_token(self, serial_number: str) -> dict | None:
         """Get token info for a device by serial number."""
