@@ -170,4 +170,4 @@ Kalau dipisah per subdomain (misalnya `app.domain.com` dan `api.domain.com`):
 
 - Frontend: `VITE_API_URL=https://api.domain.com`, lalu `npm run build`
 - Backend: `FRONTEND_URL=https://app.domain.com`, `SANCTUM_STATEFUL_DOMAINS=app.domain.com`,
-  `SESSION_DOMAIN=.domain.com`, dan `SESSION_SECURE_COOKIE=true`
+  `SESSION_DOMAIN=.domain.com`, dan `SESSION_SECURE_COOKIE=true`r

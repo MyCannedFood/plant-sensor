@@ -5,7 +5,6 @@ Uses Pydantic Settings for environment variable management.
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field
-from typing import Optional
 
 
 class Settings(BaseSettings):
@@ -28,9 +27,6 @@ class Settings(BaseSettings):
     api_url: str = Field(default="http://localhost", description="Base URL without /api (e.g., https://api.example.com)")
     verify_ssl: bool = Field(default=True, description="Verify SSL certificates for HTTPS")
     token_file: str | None = Field(default=None, description="Path to device tokens JSON file (SIMULATOR_TOKEN_FILE)")
-
-    # WebSocket (optional, for real-time updates)
-    ws_url: Optional[str] = Field(default=None, description="WebSocket URL for real-time updates (e.g., wss://api.example.com/ws)")
 
     # Logging
     log_level: str = Field(default="INFO", description="Logging level (DEBUG, INFO, WARNING, ERROR)")

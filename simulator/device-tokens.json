@@ -1,17 +1,27 @@
 {
-    "LIVING001": {
+    "ESP32NODE001": {
         "device_id": 1,
-        "serial_number": "LIVING001",
-        "token": "wvQoKfR9liUIgkjBECKdzOreHUSa5JXu4HASlcTj"
+        "serial_number": "ESP32NODE001",
+        "token": "dtzurGrWCRJNZdhuLxLyud0Dmj6MSPwMxyNtkLxo"
     },
-    "KITCHEN001": {
+    "ESP32NODE002": {
         "device_id": 2,
-        "serial_number": "KITCHEN001",
-        "token": "Oh6bSnpjgGaiqNegNqu8bnezH636zYtlfFzi0rs0"
+        "serial_number": "ESP32NODE002",
+        "token": "hjtIdA7NoHkxEmB8q8HfHHOX6h0hosiiZ8kR7PVB"
     },
-    "BEDROOM001": {
+    "ESP8266NODE001": {
         "device_id": 3,
-        "serial_number": "BEDROOM001",
-        "token": "9aXS3805MBnCuIABgIRaeHVWcY5hJNqHCkdOcdpm"
+        "serial_number": "ESP8266NODE001",
+        "token": "fPh8wqiyx50WNx24c0LouSo1fh6zYZmF2KhLrlzk"
+    },
+    "ESP8266NODE002": {
+        "device_id": 4,
+        "serial_number": "ESP8266NODE002",
+        "token": "BuH7d7xWMOSWFFMRnKSBDj1hAoxTSUxeXSLkZNEu"
+    },
+    "CUSTOMNODE001": {
+        "device_id": 5,
+        "serial_number": "CUSTOMNODE001",
+        "token": "gcoi8SqxJGyXlUqS7AYTKXLZTuznEpJLEYlAlLNG"
     }
 }

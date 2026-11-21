@@ -3,9 +3,12 @@
 namespace App\Http\Middleware;
 
 use App\Enums\DeviceStatus;
+use App\Enums\ThresholdParameter;
 use App\Models\Device;
+use App\Models\DeviceSensor;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\Response;
 
 class AuthenticateDevice
@@ -33,6 +36,13 @@ class AuthenticateDevice
             ->first();
 
         if ($device === null) {
+            // Auto-provision from preprovisioned-devices.json so physical
+            // devices can authenticate with their static token without a
+            // manual seeding step.
+            $device = $this->provisionFromJson($token);
+        }
+
+        if ($device === null) {
             abort(401, 'The device token is not valid.');
         }
 
@@ -50,5 +60,79 @@ class AuthenticateDevice
         $request->attributes->set('device', $device);
 
         return $next($request);
+    }
+
+    /**
+     * Auto-provision a device from preprovisioned-devices.json.
+     *
+     * Reads the plaintext token from the provisioning file, creates a Device
+     * record with the SHA-256 hash, and declares the sensors it carries.
+     *
+     * @param  string  $token  Plaintext device token
+     * @return \App\Models\Device|null
+     */
+    private function provisionFromJson(string $token): ?Device
+    {
+        $path = 'preprovisioned-devices.json';
+
+        if (! Storage::disk('local')->exists($path)) {
+            return null;
+        }
+
+        $data = json_decode(Storage::disk('local')->get($path), true);
+
+        if (! is_array($data)) {
+            return null;
+        }
+
+        foreach ($data as $entry) {
+            if (($entry['token'] ?? null) !== $token) {
+                continue;
+            }
+
+            $serial = $entry['serial_number'] ?? null;
+            if (! is_string($serial) || $serial === '') {
+                return null;
+            }
+
+            // Don't steal a device already assigned to another plant.
+            $existing = Device::where('serial_number', $serial)->first();
+            if ($existing && $existing->plant_id !== null) {
+                return null;
+            }
+
+            $device = Device::firstOrCreate(
+                ['serial_number' => $serial],
+                [
+                    'name'      => $entry['name'] ?? "Device {$serial}",
+                    'api_token' => hash('sha256', $token),
+                    'status'    => DeviceStatus::Active->value,
+                    'plant_id'  => null,
+                ]
+            );
+
+            $device->update([
+                'api_token' => hash('sha256', $token),
+                'status'    => DeviceStatus::Active->value,
+            ]);
+
+            // Declare the sensors this physical node carries.
+            foreach ($entry['sensors'] ?? [] as $sensorParam) {
+                try {
+                    $parameter = ThresholdParameter::from($sensorParam);
+
+                    DeviceSensor::query()->firstOrCreate([
+                        'device_id' => $device->id,
+                        'parameter' => $parameter,
+                    ]);
+                } catch (\ValueError $e) {
+                    // Unknown sensor parameter — skip it.
+                }
+            }
+
+            return $device;
+        }
+
+        return null;
     }
 }

@@ -11,7 +11,6 @@ use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 
 class DatabaseSeeder extends Seeder
 {
@@ -44,35 +43,70 @@ class DatabaseSeeder extends Seeder
     ];
 
     /**
-     * Unconnected devices (plant_id = null) with the sensors each carries.
+     * Unconnected devices (plant_id = null) with fixed tokens and sensors.
+     * Tokens match preprovisioned-devices.json exactly so auto-provisioning
+     * and the simulator share the same credentials.
      *
-     * @var list<array{name: string, serial_number: string, sensors: list<ThresholdParameter>}>
+     * @var list<array{name: string, serial_number: string, token: string, sensors: list<ThresholdParameter>}>
      */
     private const DEVICES = [
         [
-            'name'      => 'Living Room Sensor',
-            'serial_number' => 'LIVING001',
-            'sensors'   => [
+            'name'         => 'ESP32 Sensor Node #1',
+            'serial_number' => 'ESP32NODE001',
+            'token'        => 'dtzurGrWCRJNZdhuLxLyud0Dmj6MSPwMxyNtkLxo',
+            'sensors'      => [
                 ThresholdParameter::Co2,
-                ThresholdParameter::Temperature,
-                ThresholdParameter::Humidity,
-            ],
-        ],
-        [
-            'name'      => 'Kitchen Sensor',
-            'serial_number' => 'KITCHEN001',
-            'sensors'   => [
                 ThresholdParameter::Temperature,
                 ThresholdParameter::Humidity,
                 ThresholdParameter::Light,
             ],
         ],
         [
-            'name'      => 'Bedroom Sensor',
-            'serial_number' => 'BEDROOM001',
-            'sensors'   => [
+            'name'         => 'ESP32 Sensor Node #2',
+            'serial_number' => 'ESP32NODE002',
+            'token'        => 'hjtIdA7NoHkxEmB8q8HfHHOX6h0hosiiZ8kR7PVB',
+            'sensors'      => [
+                ThresholdParameter::Temperature,
+                ThresholdParameter::Humidity,
+                ThresholdParameter::WaterLevel,
+                ThresholdParameter::WaterTemperature,
+            ],
+        ],
+        [
+            'name'         => 'ESP8266 Sensor Node #1',
+            'serial_number' => 'ESP8266NODE001',
+            'token'        => 'fPh8wqiyx50WNx24c0LouSo1fh6zYZmF2KhLrlzk',
+            'sensors'      => [
                 ThresholdParameter::Co2,
+                ThresholdParameter::Temperature,
+                ThresholdParameter::Humidity,
                 ThresholdParameter::Ph,
+                ThresholdParameter::Ec,
+            ],
+        ],
+        [
+            'name'         => 'ESP8266 Sensor Node #2',
+            'serial_number' => 'ESP8266NODE002',
+            'token'        => 'BuH7d7xWMOSWFFMRnKSBDj1hAoxTSUxeXSLkZNEu',
+            'sensors'      => [
+                ThresholdParameter::Ph,
+                ThresholdParameter::Ec,
+                ThresholdParameter::WaterLevel,
+                ThresholdParameter::Light,
+            ],
+        ],
+        [
+            'name'         => 'Custom Sensor Node',
+            'serial_number' => 'CUSTOMNODE001',
+            'token'        => 'gcoi8SqxJGyXlUqS7AYTKXLZTuznEpJLEYlAlLNG',
+            'sensors'      => [
+                ThresholdParameter::Co2,
+                ThresholdParameter::Temperature,
+                ThresholdParameter::Humidity,
+                ThresholdParameter::Ph,
+                ThresholdParameter::Ec,
+                ThresholdParameter::WaterTemperature,
+                ThresholdParameter::Light,
                 ThresholdParameter::WaterLevel,
             ],
         ],
@@ -98,14 +132,12 @@ class DatabaseSeeder extends Seeder
             $device = Device::query()->firstOrCreate(
                 ['serial_number' => $deviceData['serial_number']],
                 [
-                    'name' => $deviceData['name'],
-                    'api_token' => hash('sha256', Str::random(40)),
-                    'status' => DeviceStatus::Active->value,
-                    'plant_id' => null,
+                    'name'      => $deviceData['name'],
+                    'api_token' => hash('sha256', $deviceData['token']),
+                    'status'    => DeviceStatus::Active->value,
+                    'plant_id'  => null,
                 ],
             );
-
-            $token = $device->generateToken();
 
             // Declare the sensors this physical node carries.
             foreach ($deviceData['sensors'] as $parameter) {
@@ -116,9 +148,9 @@ class DatabaseSeeder extends Seeder
             }
 
             $tokens[$deviceData['serial_number']] = [
-                'device_id' => $device->id,
+                'device_id'    => $device->id,
                 'serial_number' => $device->serial_number,
-                'token' => $token,
+                'token'        => $deviceData['token'],
             ];
         }
 

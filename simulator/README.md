@@ -34,7 +34,6 @@ Copy `.env.example` to `.env` and adjust:
 | `SIMULATOR_API_URL` | `http://localhost` | Backend API base URL (no `/api` suffix) |
 | `SIMULATOR_TOKEN_FILE` | `../backend/storage/app/private/device-tokens.json` | Path to device tokens |
 | `SIMULATOR_VERIFY_SSL` | `true` | Verify SSL certs for HTTPS |
-| `SIMULATOR_WS_URL` | *(none)* | WebSocket URL for real-time updates |
 | `SIMULATOR_DEFAULT_INTERVAL` | `10` | Minutes between readings |
 | `SIMULATOR_DEFAULT_VARIANCE` | `0.15` | Drift factor (±15%) |
 | `SIMULATOR_LOG_LEVEL` | `INFO` | Logging level |
@@ -54,7 +53,6 @@ Options:
   --once                  Send one batch then exit
   --api-url TEXT          Override API base URL
   --token-file TEXT       Override token file path
-  --ws-url TEXT           WebSocket URL for real-time updates
 ```
 
 ## Examples
@@ -68,9 +66,6 @@ python -m simulator simulate --interval 5 --duration 60
 
 # Run specific device only
 python -m simulator simulate --device ABC123DEF456 --once
-
-# With WebSocket for real-time dashboard updates
-python -m simulator simulate --interval 10 --ws-url ws://localhost
 
 # Staging environment
 SIMULATOR_API_URL=https://staging-api.example.com python -m simulator simulate --once
@@ -117,9 +112,8 @@ simulator/
 │   ├── models/sensor.py       # Sensor bounds, validation, value generation
 │   ├── services/
 │   │   ├── sensor_generator.py  # Gaussian drift / random walk
-│   │   ├── http_client.py       # REST API client with retries
-│   │   └── ws_client.py         # WebSocket client with auto-reconnect
-│   └── commands/simulate.py    # Simulation command logic
+│   │   └── http_client.py       # REST API client with retries
+│   └── commands/simulate.py     # Simulation command logic
 ├── tests/
 ├── pyproject.toml
 └── .env.example

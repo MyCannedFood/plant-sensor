@@ -15,7 +15,6 @@ from rich.table import Table
 from simulator.config.settings import settings
 from simulator.services.http_client import ApiClient, TokenManager
 from simulator.services.sensor_generator import SensorGenerator
-from simulator.services.ws_client import MultiDeviceWebSocketManager
 
 console = Console()
 
@@ -28,7 +27,6 @@ async def _run_simulation(
     dry_run: bool,
     once: bool,
     api_url: str | None,
-    ws_url: str | None,
     unit: str = "minutes",
 ) -> int:
     """
@@ -40,14 +38,11 @@ async def _run_simulation(
     # Override settings with CLI args
     if api_url:
         settings.api_url = api_url
-    if ws_url:
-        settings.ws_url = ws_url
 
     # Initialize components
     token_manager = TokenManager(token_file=settings.token_file)
     api_client = ApiClient(base_url=settings.api_url, verify_ssl=settings.verify_ssl)
     sensor_generator = SensorGenerator(variance=variance)
-    ws_manager = MultiDeviceWebSocketManager(ws_url=settings.ws_url) if settings.ws_url else None
 
     # Get devices to simulate
     all_tokens = token_manager.get_all_tokens()
@@ -65,21 +60,13 @@ async def _run_simulation(
         return 1
 
     console.print(f"[green]Starting simulation for {len(devices)} device(s)[/green]")
-    console.print(f"  Interval: {interval_minutes} minutes")
+    console.print(f"  Interval: {interval_minutes} {unit}")
     console.print(f"  Duration: {'infinite' if duration_minutes == 0 else f'{duration_minutes} minutes'}")
     console.print(f"  Variance: {variance * 100:.0f}%")
     console.print(f"  API: {settings.api_url}")
-    if settings.ws_url:
-        console.print(f"  WebSocket: {settings.ws_url}")
     if dry_run:
         console.print("[yellow]DRY RUN MODE - no data will be sent[/yellow]")
     console.print()
-
-    # Connect WebSocket if configured
-    if ws_manager:
-        for device in devices:
-            await ws_manager.add_device(device["device_id"], device["token"])
-        console.print("[green]WebSocket connections established[/green]")
 
     # Test API connectivity
     if not dry_run:
@@ -189,10 +176,6 @@ async def _run_simulation(
                     if status in (200, 201):
                         total_readings += 1
                         _print_reading(serial, reading, status="OK")
-
-                        # Also broadcast via WebSocket
-                        if ws_manager:
-                            await ws_manager.broadcast_reading(device_id, reading)
                     elif status == 409:
                         # Conflict - idempotent, values match
                         total_readings += 1
@@ -226,9 +209,6 @@ async def _run_simulation(
     console.print()
     _print_summary(total_readings, failed_readings, start_time)
 
-    # Cleanup
-    if ws_manager:
-        await ws_manager.close_all()
     await api_client.close()
 
     return 0 if failed_readings == 0 else 1
@@ -278,7 +258,6 @@ def simulate(
     dry_run: bool = typer.Option(False, "--dry-run", help="Print payloads without sending"),
     once: bool = typer.Option(False, "--once", help="Send one batch then exit"),
     api_url: str | None = typer.Option(None, "--api-url", help="Override API base URL"),
-    ws_url: str | None = typer.Option(None, "--ws-url", help="WebSocket URL for real-time updates"),
     unit: str = typer.Option("minutes", "--unit", "-u", help="Time unit for interval (minutes or seconds)"),
 ) -> None:
     """
@@ -291,9 +270,6 @@ def simulate(
 
     # Run for 1 hour with 5-minute intervals
     simulator simulate --interval 5 --duration 60
-
-    # Run specific device with WebSocket
-    simulator simulate --device ABC123DEF456 --ws-url ws://localhost
 
     # Staging environment
     SIMULATOR_API_URL=https://staging-api.example.com simulator simulate --once
@@ -308,7 +284,6 @@ def simulate(
             dry_run=dry_run,
             once=once,
             api_url=api_url,
-            ws_url=ws_url,
             unit=unit,
         ))
         sys.exit(exit_code)
